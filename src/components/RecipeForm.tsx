@@ -1,37 +1,42 @@
 import { Check, Image, ListPlus, Save, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { DirectionStep, Ingredient, Recipe } from '../types/recipe';
+import type { CookingMethod, DirectionStep, Ingredient, Recipe } from '../types/recipe';
 
 const placeholderImage =
   'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 630%22%3E%3Crect width=%221200%22 height=%22630%22 fill=%22%23292524%22/%3E%3Ccircle cx=%22940%22 cy=%22156%22 r=%22104%22 fill=%22%23f59e0b%22 opacity=%22.88%22/%3E%3Cpath d=%22M0 462c148-88 312-112 492-72 164 36 306 18 432-54 104-60 196-76 276-48v342H0z%22 fill=%22%23fb923c%22 opacity=%22.82%22/%3E%3Cpath d=%22M0 520c176-72 344-82 504-30 152 50 308 42 468-24 80-34 156-42 228-24v188H0z%22 fill=%22%23fef3c7%22 opacity=%22.92%22/%3E%3Ctext x=%2260%22 y=%22212%22 fill=%22%23fff7ed%22 font-family=%22Inter,Arial,sans-serif%22 font-size=%2276%22 font-weight=%22800%22%3ENext Thyme%3C/text%3E%3Ctext x=%2264%22 y=%22276%22 fill=%22%23fed7aa%22 font-family=%22Inter,Arial,sans-serif%22 font-size=%2234%22 font-weight=%22600%22%3EYour saved recipe%3C/text%3E%3C/svg%3E';
 
 type RecipeFormProps = {
+  recipe?: Recipe;
   onCancel: () => void;
   onSave: (recipe: Recipe) => void;
 };
 
-export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Dinner');
-  const [cuisine, setCuisine] = useState('');
-  const [difficulty, setDifficulty] = useState('Easy');
-  const [servings, setServings] = useState(4);
-  const [yieldLabel, setYieldLabel] = useState('');
-  const [prepTimeMinutes, setPrepTimeMinutes] = useState(15);
-  const [cookTimeMinutes, setCookTimeMinutes] = useState(30);
-  const [ovenTempF, setOvenTempF] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
+  const isEditing = Boolean(recipe);
+  const [title, setTitle] = useState(recipe?.title ?? '');
+  const [description, setDescription] = useState(recipe?.description ?? '');
+  const [category, setCategory] = useState(recipe?.category ?? 'Dinner');
+  const [cuisine, setCuisine] = useState(recipe?.cuisine ?? '');
+  const [difficulty, setDifficulty] = useState(recipe?.difficulty ?? 'Easy');
+  const [servings, setServings] = useState(recipe?.servings ?? 4);
+  const [yieldLabel, setYieldLabel] = useState(recipe?.yieldLabel ?? '');
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState(recipe?.prepTimeMinutes ?? 15);
+  const [cookTimeHours, setCookTimeHours] = useState(Math.floor((recipe?.cookTimeMinutes ?? 30) / 60));
+  const [cookTimeMinuteRemainder, setCookTimeMinuteRemainder] = useState((recipe?.cookTimeMinutes ?? 30) % 60);
+  const [cookingMethod, setCookingMethod] = useState<CookingMethod>(getInitialCookingMethod(recipe));
+  const [ovenTempF, setOvenTempF] = useState(recipe?.ovenTempF ? String(recipe.ovenTempF) : '');
+  const [imageUrl, setImageUrl] = useState(recipe?.imageUrl ?? '');
   const [imageUploadName, setImageUploadName] = useState('');
-  const [ingredientsText, setIngredientsText] = useState('');
-  const [directionsText, setDirectionsText] = useState('');
-  const [tagsText, setTagsText] = useState('');
-  const [equipmentText, setEquipmentText] = useState('');
-  const [tipsText, setTipsText] = useState('');
-  const [leftoverStorage, setLeftoverStorage] = useState('');
-  const [nextTimeNotes, setNextTimeNotes] = useState('');
+  const [ingredientsText, setIngredientsText] = useState(recipe ? formatIngredients(recipe.ingredients) : '');
+  const [directionsText, setDirectionsText] = useState(recipe ? formatDirections(recipe.directions) : '');
+  const [tagsText, setTagsText] = useState(recipe?.tags.join(', ') ?? '');
+  const [equipmentText, setEquipmentText] = useState(recipe?.equipment.join(', ') ?? '');
+  const [tipsText, setTipsText] = useState(recipe?.tips.join('\n') ?? '');
+  const [leftoverStorage, setLeftoverStorage] = useState(recipe?.leftoverStorage ?? '');
+  const [nextTimeNotes, setNextTimeNotes] = useState(recipe?.nextTimeNotes ?? '');
   const [error, setError] = useState('');
 
+  const cookTimeMinutes = useMemo(() => cookTimeHours * 60 + cookTimeMinuteRemainder, [cookTimeHours, cookTimeMinuteRemainder]);
   const totalTimeMinutes = useMemo(() => prepTimeMinutes + cookTimeMinutes, [cookTimeMinutes, prepTimeMinutes]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -46,8 +51,8 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
     }
 
     const finalImageUrl = imageUrl.trim() || placeholderImage;
-    const recipe: Recipe = {
-      id: createRecipeId(title),
+    const savedRecipe: Recipe = {
+      id: recipe?.id ?? createRecipeId(title),
       title: title.trim(),
       description: description.trim(),
       category: category.trim() || 'Recipe',
@@ -56,21 +61,22 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
       imageUrl: finalImageUrl,
       imageSmallUrl: finalImageUrl,
       imageAlt: `${title.trim()} recipe`,
-      imageCredit: imageUrl.trim() ? 'Custom image' : 'Next Thyme placeholder',
-      imageCreditUrl: imageUrl.trim() || '#',
-      history: '',
+      imageCredit: getImageCredit(recipe, finalImageUrl),
+      imageCreditUrl: getImageCreditUrl(recipe, finalImageUrl),
+      history: recipe?.history ?? '',
       servings,
       yieldLabel: yieldLabel.trim() || `${servings} servings`,
       prepTimeMinutes,
       cookTimeMinutes,
       totalTimeMinutes,
-      ovenTempF: ovenTempF ? Number(ovenTempF) : undefined,
+      cookingMethod,
+      ovenTempF: cookingMethod === 'Microwave' || !ovenTempF ? undefined : Number(ovenTempF),
       tags: parseCommaList(tagsText),
       equipment: parseCommaList(equipmentText),
       ingredients,
       directions,
       tips: parseLines(tipsText),
-      nutrition: {
+      nutrition: recipe?.nutrition ?? {
         calories: 0,
         protein: 'Not added',
         fat: 'Not added',
@@ -78,10 +84,10 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
       },
       nextTimeNotes: nextTimeNotes.trim() || 'Add a note after you make it once.',
       leftoverStorage: leftoverStorage.trim() || 'Store leftovers in an airtight container in the refrigerator.',
-      similarRecipeIds: [],
+      similarRecipeIds: recipe?.similarRecipeIds ?? [],
     };
 
-    onSave(recipe);
+    onSave(savedRecipe);
   }
 
   async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -106,15 +112,15 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
       <form onSubmit={handleSubmit} className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200 pb-5">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-red-700">New recipe</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-stone-950">Add a Recipe</h1>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-red-700">{isEditing ? 'Edit recipe' : 'New recipe'}</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-stone-950">{isEditing ? `Edit ${recipe?.title}` : 'Add a Recipe'}</h1>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onCancel} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 text-sm font-bold text-stone-700 transition hover:border-stone-400 hover:bg-stone-50">
               <X size={17} /> Cancel
             </button>
             <button type="submit" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red-700 px-4 text-sm font-bold text-white transition hover:bg-red-800">
-              <Save size={17} /> Save recipe
+              <Save size={17} /> {isEditing ? 'Save changes' : 'Save recipe'}
             </button>
           </div>
         </div>
@@ -219,13 +225,30 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
                   <Field label="Prep min" htmlFor="recipe-prep">
                     <input id="recipe-prep" type="number" min="0" value={prepTimeMinutes} onChange={(event) => setPrepTimeMinutes(Math.max(0, Number(event.target.value) || 0))} className={fieldClassName} />
                   </Field>
-                  <Field label="Cook min" htmlFor="recipe-cook">
-                    <input id="recipe-cook" type="number" min="0" value={cookTimeMinutes} onChange={(event) => setCookTimeMinutes(Math.max(0, Number(event.target.value) || 0))} className={fieldClassName} />
+                  <Field label="Cook hours" htmlFor="recipe-cook-hours">
+                    <input id="recipe-cook-hours" type="number" min="0" value={cookTimeHours} onChange={(event) => setCookTimeHours(Math.max(0, Number(event.target.value) || 0))} className={fieldClassName} />
                   </Field>
                 </div>
-                <Field label="Oven °F" htmlFor="recipe-oven">
-                  <input id="recipe-oven" type="number" min="0" value={ovenTempF} onChange={(event) => setOvenTempF(event.target.value)} className={fieldClassName} />
+                <Field label="Cook minutes" htmlFor="recipe-cook-minutes">
+                  <input id="recipe-cook-minutes" type="number" min="0" max="59" value={cookTimeMinuteRemainder} onChange={(event) => setCookTimeMinuteRemainder(Math.min(59, Math.max(0, Number(event.target.value) || 0)))} className={fieldClassName} />
                 </Field>
+                <Field label="Cooking method" htmlFor="recipe-cooking-method">
+                  <select
+                    id="recipe-cooking-method"
+                    value={cookingMethod}
+                    onChange={(event) => setCookingMethod(event.target.value as CookingMethod)}
+                    className={fieldClassName}
+                  >
+                    <option>Oven</option>
+                    <option>Stovetop</option>
+                    <option>Microwave</option>
+                  </select>
+                </Field>
+                {cookingMethod !== 'Microwave' && (
+                  <Field label="Oven °F" htmlFor="recipe-oven">
+                    <input id="recipe-oven" type="number" min="0" value={ovenTempF} onChange={(event) => setOvenTempF(event.target.value)} className={fieldClassName} />
+                  </Field>
+                )}
                 <div className="rounded-md bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
                   Total time: {totalTimeMinutes} min
                 </div>
@@ -253,7 +276,7 @@ export function RecipeForm({ onCancel, onSave }: RecipeFormProps) {
                   )}
                 </Field>
                 <Field label="Image URL" htmlFor="recipe-image">
-                  <input id="recipe-image" type="url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://..." className={fieldClassName} />
+                  <input id="recipe-image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://..." className={fieldClassName} />
                 </Field>
                 <img src={imageUrl || placeholderImage} alt="" className="aspect-[16/9] w-full rounded object-cover" />
               </div>
@@ -298,15 +321,92 @@ function Field({
   );
 }
 
+function formatIngredients(ingredients: Ingredient[]) {
+  return ingredients
+    .map((ingredient) => {
+      const amount = ingredient.unit || ingredient.quantity !== 1 ? [formatQuantity(ingredient.quantity), ingredient.unit].filter(Boolean).join(' ') : '';
+      const notes = ingredient.notes ? `, ${ingredient.notes}` : '';
+
+      return [amount, ingredient.name].filter(Boolean).join(' ') + notes;
+    })
+    .join('\n');
+}
+
+function formatDirections(directions: DirectionStep[]) {
+  return [...directions]
+    .sort((firstStep, secondStep) => firstStep.order - secondStep.order)
+    .map((step) => step.instruction)
+    .join('\n');
+}
+
+function formatQuantity(quantity: number) {
+  if (Number.isInteger(quantity)) {
+    return String(quantity);
+  }
+
+  const commonFractions: Record<string, string> = {
+    '0.125': '1/8',
+    '0.25': '1/4',
+    '0.333': '1/3',
+    '0.5': '1/2',
+    '0.667': '2/3',
+    '0.75': '3/4',
+  };
+  const whole = Math.floor(quantity);
+  const fraction = quantity - whole;
+  const fractionLabel = commonFractions[fraction.toFixed(3)];
+
+  if (!fractionLabel) {
+    return String(quantity);
+  }
+
+  return whole > 0 ? `${whole} ${fractionLabel}` : fractionLabel;
+}
+
+function getImageCredit(recipe: Recipe | undefined, imageUrl: string) {
+  if (recipe?.imageUrl === imageUrl) {
+    return recipe.imageCredit;
+  }
+
+  return imageUrl === placeholderImage ? 'Next Thyme placeholder' : 'Custom image';
+}
+
+function getImageCreditUrl(recipe: Recipe | undefined, imageUrl: string) {
+  if (recipe?.imageUrl === imageUrl) {
+    return recipe.imageCreditUrl;
+  }
+
+  return imageUrl === placeholderImage ? '#' : imageUrl;
+}
+
+function getInitialCookingMethod(recipe: Recipe | undefined): CookingMethod {
+  if (recipe?.cookingMethod) {
+    return recipe.cookingMethod;
+  }
+
+  return recipe?.ovenTempF ? 'Oven' : 'Stovetop';
+}
+
 function parseIngredients(text: string): Ingredient[] {
   return parseLines(text).map((line, index) => {
     const quantityMatch = line.match(/^(\d+(?:\.\d+)?|\d+\/\d+|\d+\s+\d+\/\d+)\s+([^\s,]+)\s+(.+)$/);
+    const quantityOnlyMatch = line.match(/^(\d+(?:\.\d+)?|\d+\/\d+|\d+\s+\d+\/\d+)\s+(.+)$/);
 
-    if (!quantityMatch) {
+    if (quantityMatch) {
       return {
         id: `custom-i${index + 1}`,
-        name: line,
-        quantity: 1,
+        name: quantityMatch[3].trim(),
+        quantity: parseQuantity(quantityMatch[1]),
+        unit: quantityMatch[2].trim(),
+        section: 'Ingredients',
+      };
+    }
+
+    if (quantityOnlyMatch) {
+      return {
+        id: `custom-i${index + 1}`,
+        name: quantityOnlyMatch[2].trim(),
+        quantity: parseQuantity(quantityOnlyMatch[1]),
         unit: '',
         section: 'Ingredients',
       };
@@ -314,9 +414,9 @@ function parseIngredients(text: string): Ingredient[] {
 
     return {
       id: `custom-i${index + 1}`,
-      name: quantityMatch[3].trim(),
-      quantity: parseQuantity(quantityMatch[1]),
-      unit: quantityMatch[2].trim(),
+      name: line,
+      quantity: 1,
+      unit: '',
       section: 'Ingredients',
     };
   });

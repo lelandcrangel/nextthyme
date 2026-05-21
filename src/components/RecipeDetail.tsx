@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Copy,
   Flame,
+  Pencil,
   Printer,
   Scale,
   Soup,
@@ -18,9 +19,10 @@ import { formatIngredientAmount, scaleIngredient } from '../utils/scaleIngredien
 
 type RecipeDetailProps = {
   recipe: Recipe;
+  onEditRecipe: (recipeId: string) => void;
 };
 
-export function RecipeDetail({ recipe }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, onEditRecipe }: RecipeDetailProps) {
   const [desiredServings, setDesiredServings] = useState(recipe.servings);
   const [checkedIngredientIds, setCheckedIngredientIds] = useState<string[]>([]);
   const [activeStepId, setActiveStepId] = useState(recipe.directions[0]?.id ?? '');
@@ -100,6 +102,9 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
               <button onClick={copyShoppingList} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-3 text-sm font-bold text-stone-950 shadow-sm transition hover:bg-amber-100 sm:w-auto">
                 <Copy size={17} /> Copy ingredients
               </button>
+              <button onClick={() => onEditRecipe(recipe.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/60 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25 sm:w-auto">
+                <Pencil size={17} /> Edit recipe
+              </button>
               <button onClick={printRecipe} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/50 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20 sm:w-auto">
                 <Printer size={17} /> Print recipe
               </button>
@@ -113,8 +118,8 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
           <Stat icon={<Utensils size={18} />} label="Serves" value={`${desiredServings}`} />
           <Stat icon={<ClipboardList size={18} />} label="Yield" value={recipe.yieldLabel} />
           <Stat icon={<Timer size={18} />} label="Prep" value={`${recipe.prepTimeMinutes} min`} />
-          <Stat icon={<Soup size={18} />} label="Cook" value={`${recipe.cookTimeMinutes} min`} />
-          <Stat icon={<Flame size={18} />} label="Oven" value={recipe.ovenTempF ? `${recipe.ovenTempF}°F` : 'Stovetop'} />
+          <Stat icon={<Soup size={18} />} label="Cook" value={formatDuration(recipe.cookTimeMinutes)} />
+          <Stat icon={<Flame size={18} />} label="Method" value={formatCookingMethod(recipe)} />
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,0.82fr)_minmax(0,1.18fr)]">
@@ -263,6 +268,31 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
       <div className="mt-2 text-lg font-black leading-tight text-stone-950">{value}</div>
     </div>
   );
+}
+
+function formatCookingMethod(recipe: Recipe) {
+  const cookingMethod = recipe.cookingMethod ?? (recipe.ovenTempF ? 'Oven' : 'Stovetop');
+
+  if (cookingMethod === 'Microwave') {
+    return 'Microwave';
+  }
+
+  return recipe.ovenTempF ? `${cookingMethod} ${recipe.ovenTempF}°F` : cookingMethod;
+}
+
+function formatDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
 }
 
 function Panel({ title, items }: { title: string; items: string[] }) {

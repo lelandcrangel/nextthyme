@@ -13,6 +13,8 @@ export type DirectionStep = {
   instruction: string;
 };
 
+export type CookingMethod = 'Oven' | 'Stovetop' | 'Microwave';
+
 export type Recipe = {
   id: string;
   title: string;
@@ -31,6 +33,7 @@ export type Recipe = {
   prepTimeMinutes: number;
   cookTimeMinutes: number;
   totalTimeMinutes: number;
+  cookingMethod?: CookingMethod;
   ovenTempF?: number;
   tags: string[];
   equipment: string[];

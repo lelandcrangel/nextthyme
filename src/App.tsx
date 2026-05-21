@@ -11,6 +11,7 @@ export default function App() {
   const [showRestoreRecipes, setShowRestoreRecipes] = useState(initialRecipeState.storageRecovered);
   const [selectedRecipeId, setSelectedRecipeId] = useState(recipes[0]?.id ?? '');
   const [isAddingRecipe, setIsAddingRecipe] = useState(false);
+  const [editingRecipeId, setEditingRecipeId] = useState('');
 
   const selectedRecipe = useMemo(
     () => recipes.find((recipe) => recipe.id === selectedRecipeId) ?? recipes[0],
@@ -27,18 +28,47 @@ export default function App() {
     setShowRestoreRecipes(false);
     setSelectedRecipeId(restoredRecipes[0]?.id ?? '');
     setIsAddingRecipe(false);
+    setEditingRecipeId('');
   }
 
   function handleSelectRecipe(recipeId: string) {
     setSelectedRecipeId(recipeId);
     setIsAddingRecipe(false);
+    setEditingRecipeId('');
   }
 
   function handleSaveRecipe(recipe: Recipe) {
-    setRecipes((currentRecipes) => [...currentRecipes, recipe]);
+    setRecipes((currentRecipes) => {
+      const existingRecipe = currentRecipes.find((currentRecipe) => currentRecipe.id === recipe.id);
+
+      if (!existingRecipe) {
+        return [...currentRecipes, recipe];
+      }
+
+      return currentRecipes.map((currentRecipe) => (currentRecipe.id === recipe.id ? recipe : currentRecipe));
+    });
     setSelectedRecipeId(recipe.id);
     setIsAddingRecipe(false);
+    setEditingRecipeId('');
   }
+
+  function handleCancelForm() {
+    setIsAddingRecipe(false);
+    setEditingRecipeId('');
+  }
+
+  function handleAddRecipe() {
+    setIsAddingRecipe(true);
+    setEditingRecipeId('');
+  }
+
+  function handleEditRecipe(recipeId: string) {
+    setSelectedRecipeId(recipeId);
+    setIsAddingRecipe(false);
+    setEditingRecipeId(recipeId);
+  }
+
+  const recipeBeingEdited = recipes.find((recipe) => recipe.id === editingRecipeId);
 
   return (
     <div className="min-h-screen bg-[#f8f4ed] text-stone-950 lg:flex lg:h-screen lg:overflow-hidden">
@@ -46,14 +76,14 @@ export default function App() {
         recipes={recipes}
         selectedRecipeId={selectedRecipeId}
         onSelectRecipe={handleSelectRecipe}
-        onAddRecipe={() => setIsAddingRecipe(true)}
+        onAddRecipe={handleAddRecipe}
         onRestoreRecipes={handleRestoreRecipes}
         showRestoreRecipes={showRestoreRecipes}
       />
-      {isAddingRecipe ? (
-        <RecipeForm onCancel={() => setIsAddingRecipe(false)} onSave={handleSaveRecipe} />
+      {isAddingRecipe || recipeBeingEdited ? (
+        <RecipeForm key={recipeBeingEdited?.id ?? 'new-recipe'} recipe={recipeBeingEdited} onCancel={handleCancelForm} onSave={handleSaveRecipe} />
       ) : (
-        selectedRecipe && <RecipeDetail recipe={selectedRecipe} />
+        selectedRecipe && <RecipeDetail recipe={selectedRecipe} onEditRecipe={handleEditRecipe} />
       )}
     </div>
   );

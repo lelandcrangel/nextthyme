@@ -33,5 +33,5 @@ export function formatIngredientAmount(ingredient: Ingredient): string {
     return 'As needed';
   }
 
-  return `${formatQuantity(ingredient.quantity)} ${ingredient.unit}`;
+  return [formatQuantity(ingredient.quantity), ingredient.unit].filter(Boolean).join(' ');
 }
