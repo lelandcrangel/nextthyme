@@ -1,11 +1,12 @@
 import type { Recipe } from '../types/recipe';
-import { Clock, RotateCcw, Search, Users } from 'lucide-react';
+import { Clock, Plus, RotateCcw, Search, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type RecipeListProps = {
   recipes: Recipe[];
   selectedRecipeId: string;
   onSelectRecipe: (recipeId: string) => void;
+  onAddRecipe: () => void;
   onRestoreRecipes: () => void;
   showRestoreRecipes: boolean;
 };
@@ -14,6 +15,7 @@ export function RecipeList({
   recipes,
   selectedRecipeId,
   onSelectRecipe,
+  onAddRecipe,
   onRestoreRecipes,
   showRestoreRecipes,
 }: RecipeListProps) {
@@ -40,16 +42,26 @@ export function RecipeList({
           <p className="text-xs font-black uppercase tracking-[0.18em] text-red-700">Next Thyme</p>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-stone-950">Recipe Box</h1>
         </div>
-        {showRestoreRecipes && (
+        <div className="flex shrink-0 gap-2 lg:mt-4 lg:grid">
           <button
             type="button"
-            onClick={onRestoreRecipes}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-sm font-bold text-stone-700 transition hover:border-red-300 hover:bg-red-50 lg:mt-4 lg:w-full"
+            onClick={onAddRecipe}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-700 px-3 text-sm font-bold text-white transition hover:bg-red-800 lg:w-full"
           >
-            <RotateCcw size={16} />
-            <span className="hidden sm:inline lg:inline">Restore samples</span>
+            <Plus size={16} />
+            <span className="hidden sm:inline lg:inline">Add recipe</span>
           </button>
-        )}
+          {showRestoreRecipes && (
+            <button
+              type="button"
+              onClick={onRestoreRecipes}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-sm font-bold text-stone-700 transition hover:border-red-300 hover:bg-red-50 lg:w-full"
+            >
+              <RotateCcw size={16} />
+              <span className="hidden sm:inline lg:inline">Restore samples</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <label htmlFor="recipe-search" className="mx-auto mt-4 flex h-11 max-w-6xl items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-sm text-stone-500 lg:max-w-none">
