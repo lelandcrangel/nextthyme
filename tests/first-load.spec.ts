@@ -7,6 +7,7 @@ test('seeds and renders recipes on a fresh browser profile', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Recipe Box' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Perfect Sunday Pot Roast/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Cows-in-a-Blanket/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Easy Lasagna Rolls/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Restore samples/i })).toBeHidden();
 
   await page.getByRole('button', { name: /Beef Brisket Taquitos/i }).click();
@@ -16,6 +17,17 @@ test('seeds and renders recipes on a fresh browser profile', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Directions' })).toBeVisible();
   await expect(page.getByText('cooked smoked beef brisket').first()).toBeVisible();
   await expect(page.getByText(/Place taquitos seam-side down/i)).toBeVisible();
+
+  await page.getByRole('button', { name: /Easy Lasagna Rolls/i }).click();
+
+  await expect(page.getByRole('heading', { name: 'Easy Lasagna Rolls' })).toBeVisible();
+  await expect(page.getByText('MethodMicrowave')).toBeVisible();
+  await expect(page.getByText('2 eggs').first()).toBeVisible();
+  await expect(page.getByText('509')).toBeVisible();
+  await expect(page.getByText('30.9 g')).toBeVisible();
+  await expect(page.getByText('182 g')).toBeVisible();
+  await expect(page.getByText('49.2 g')).toBeVisible();
+  await expect(page.getByText(/Microwave on high until the rolls are hot/i)).toBeVisible();
 });
 
 test('shows restore samples when saved recipes are invalid', async ({ page }) => {

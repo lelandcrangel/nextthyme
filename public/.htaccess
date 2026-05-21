@@ -5,6 +5,7 @@ Options -MultiViews
   RewriteBase /nextthyme/
 
   RewriteRule ^index\.html$ - [L]
+  RewriteRule ^(?:assets|images)/ - [L]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d

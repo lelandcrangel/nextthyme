@@ -7,7 +7,7 @@
     "dev": "vite",
     "images:optimize": "node scripts/optimize-recipe-images.mjs",
     "build": "tsc && vite build",
-    "build:hostinger": "tsc && VITE_BASE_PATH=/nextthyme/ vite build",
+    "build:hostinger": "tsc && VITE_BASE_PATH=./ vite build",
     "preview": "vite preview",
     "preview:audit": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test:setup": "playwright install chromium",
