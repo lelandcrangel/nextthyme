@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Next Thyme is a local-first recipe box with searchable recipes, ingredient scaling, cooking directions, and browser-based persistence."
+    />
+    <meta name="theme-color" content="#f8f4ed" />
+    <meta property="og:title" content="Next Thyme Recipe Box" />
+    <meta
+      property="og:description"
+      content="A mobile-first recipe manager built with React, TypeScript, Vite, Tailwind CSS, and local browser storage."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%BASE_URL%images/recipes/pot-roast-1200.webp" />
+    <link
+      rel="preload"
+      as="image"
+      href="%BASE_URL%images/recipes/pot-roast-640.webp"
+      imagesrcset="%BASE_URL%images/recipes/pot-roast-640.webp 640w, %BASE_URL%images/recipes/pot-roast-1200.webp 1200w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+    <title>Next Thyme Recipe Box</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
