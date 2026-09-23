@@ -1,0 +1,126 @@
+name: Build and deploy
+
+# Next Thyme is served from https://lelandrangel.com/nextthyme/, a subdirectory
+# of a document root shared with three other separately deployed projects: the
+# portfolio at the root, /pitchfork-ui/ and /extraction-point/.
+#
+# server-dir below is scoped to this project's own directory, so nothing here
+# can reach a sibling. That is deliberate and it is the whole safety model:
+# the portfolio's deploy, which owns the root, needs a hand-maintained exclude
+# list to avoid clobbering the others. This one needs nothing, because it
+# cannot see outside nextthyme/.
+#
+# Run from the Actions tab. Deploys were done by hand before this existed.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        # The app reads its base path from the environment and defaults to '/'.
+        # Built without this it would request /assets/... from the domain root,
+        # which belongs to the portfolio, and every asset would fall into that
+        # site's SPA rewrite instead of 404ing.
+        #
+        # Relative rather than '/nextthyme/', because that is what the live
+        # site was built with and it is the better choice: the bundle stops
+        # caring which subdirectory it is served from. Verified by rebuilding
+        # current main this way and getting index-DZHROcoR.js, the same hash
+        # the live site is serving.
+        env:
+          VITE_BASE_PATH: ./
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          set -euo pipefail
+          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
+          grep -q './assets/' dist/index.html \
+            || { echo "::error::dist/index.html does not reference ./assets/ -- VITE_BASE_PATH did not take"; exit 1; }
+          echo "Build output looks sane:"
+          ls -la dist | head -20
+
+      - name: Deploy to Hostinger over FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./dist/
+          # Scoped to this project's directory. The path is relative to where
+          # the FTP account lands, which on this host is the user's home --
+          # NOT the document root. The portfolio's deploy shipped to "./" on
+          # 2026-09-22, uploaded a whole copy of the site to ~/, and reported
+          # success three times while the live site never changed.
+          server-dir: ./domains/lelandrangel.com/public_html/nextthyme/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+
+      # A green FTP step means the upload reported success, not that the site
+      # changed. The entry bundle is content-hashed, so its filename is a
+      # version marker: if the live page names the bundle this run just built,
+      # the bytes being served are the bytes just uploaded.
+      - name: Verify the live site serves this build
+        run: |
+          set -euo pipefail
+          base="https://lelandrangel.com/nextthyme"
+
+          # Assets are referenced relatively, so strip the leading './' to get
+          # a path that can be appended to the deployed base URL.
+          bundle=$(grep -oE '\./assets/index-[A-Za-z0-9_-]+\.js' dist/index.html | head -1 | sed 's|^\./||')
+          if [ -z "$bundle" ]; then
+            echo "::error::No hashed entry bundle found in dist/index.html -- cannot verify the deploy."
+            exit 1
+          fi
+          echo "Looking for $bundle"
+
+          # A missing file under this domain is rewritten to an index.html by
+          # the SPA rules, so an absent asset answers 200 with HTML rather than
+          # 404. Checking the status code alone would pass on a bundle that is
+          # not there, so the content is checked too.
+          for attempt in 1 2 3 4 5; do
+            html=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
+            asset=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/$bundle?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
+
+            case "$html" in
+              *"$bundle"*)
+                case "$asset" in
+                  *"<!doctype html"*|*"<!DOCTYPE html"*|"")
+                    echo "Attempt $attempt: the page names $bundle, but the asset is an HTML fallback."
+                    ;;
+                  *)
+                    echo "$base serves $bundle. The live site is this build."
+                    exit 0
+                    ;;
+                esac
+                ;;
+              *)
+                echo "Attempt $attempt: the live page does not name $bundle yet."
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "::error::$base did not serve $bundle after the upload reported success. Check that server-dir points at the directory the site is actually served from."
+          exit 1
