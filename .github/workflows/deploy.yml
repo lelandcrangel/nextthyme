@@ -10,7 +10,8 @@ name: Build and deploy
 # list to avoid clobbering the others. This one needs nothing, because it
 # cannot see outside nextthyme/.
 #
-# Run from the Actions tab. Deploys were done by hand before this existed.
+# Run from the Actions tab, against main only. Deploys were done by hand
+# before this existed.
 on:
   workflow_dispatch:
 
@@ -24,6 +25,16 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      # workflow_dispatch lets anyone who can run it pick any branch in the
+      # Actions UI, and this job publishes straight to the production URL. A
+      # job-level `if:` would only mark a feature-branch run "skipped", which
+      # reads as fine at a glance; failing says why nothing was deployed.
+      - name: Refuse to deploy anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploys run from main only; this run was started on $GITHUB_REF. Merge first, then run it against main."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -53,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
-          grep -q './assets/' dist/index.html \
+          grep -qF './assets/' dist/index.html \
             || { echo "::error::dist/index.html does not reference ./assets/ -- VITE_BASE_PATH did not take"; exit 1; }
           echo "Build output looks sane:"
           ls -la dist | head -20
@@ -88,17 +99,21 @@ jobs:
 
           # Assets are referenced relatively, so strip the leading './' to get
           # a path that can be appended to the deployed base URL.
-          bundle=$(grep -oE '\./assets/index-[A-Za-z0-9_-]+\.js' dist/index.html | head -1 | sed 's|^\./||')
+          # `|| true` because under pipefail a grep with no match would end the
+          # step right here, and the explicit error below would never be seen.
+          bundle=$(grep -oE '\./assets/index-[A-Za-z0-9_-]+\.js' dist/index.html | head -1 | sed 's|^\./||' || true)
           if [ -z "$bundle" ]; then
             echo "::error::No hashed entry bundle found in dist/index.html -- cannot verify the deploy."
             exit 1
           fi
           echo "Looking for $bundle"
 
-          # A missing file under this domain is rewritten to an index.html by
-          # the SPA rules, so an absent asset answers 200 with HTML rather than
-          # 404. Checking the status code alone would pass on a bundle that is
-          # not there, so the content is checked too.
+          # Normally a missing asset here is a real 404: this app's .htaccess
+          # passes assets/ straight through rather than rewriting it (checked
+          # live on 2026-09-24). But if that .htaccess ever fails to land, the
+          # portfolio's rules at the domain root take over, and those rewrite
+          # a missing file to the portfolio's index.html -- 200 with HTML. So
+          # the status code alone is not trusted; the content is checked too.
           for attempt in 1 2 3 4 5; do
             html=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
             asset=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/$bundle?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
