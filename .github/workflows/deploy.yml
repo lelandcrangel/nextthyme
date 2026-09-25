@@ -15,6 +15,13 @@ name: Build and deploy
 on:
   workflow_dispatch:
 
+# The job only needs to read the repository. Without this the GITHUB_TOKEN
+# inherits the repository default, which can be write-capable, and the job
+# runs third-party actions and npm packages before it holds FTP credentials.
+# The deploy itself uses the FTP secrets, not this token.
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
