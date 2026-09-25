@@ -35,9 +35,13 @@ jobs:
           echo "::error::Deploys run from main only; this run was started on $GITHUB_REF. Merge first, then run it against main."
           exit 1
 
-      - uses: actions/checkout@v4
+      # Every action is pinned to a full commit SHA, not a tag. A tag can be
+      # moved, and this job hands production FTP credentials to the deploy
+      # step: a retargeted or compromised release would run with them on the
+      # next manual deploy. Bump these deliberately, SHA and comment together.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -70,7 +74,7 @@ jobs:
           ls -la dist | head -20
 
       - name: Deploy to Hostinger over FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@8e83cea8672e3fbcbb9fdafff34debf6ae4c5f65 # v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
@@ -113,22 +117,27 @@ jobs:
           # live on 2026-09-24). But if that .htaccess ever fails to land, the
           # portfolio's rules at the domain root take over, and those rewrite
           # a missing file to the portfolio's index.html -- 200 with HTML. So
-          # the status code alone is not trusted; the content is checked too.
+          # the status code alone is not trusted.
+          #
+          # Nor is "it did not look like HTML": an error page, a JSON body or a
+          # fallback without a doctype would all pass that. The served bundle
+          # is compared byte for byte with the one this run built. curl sends
+          # no Accept-Encoding, so the host answers uncompressed; checked live
+          # on 2026-09-25, when the served index-DZHROcoR.js matched a local
+          # build of main exactly.
+          served="$RUNNER_TEMP/served-bundle.js"
           for attempt in 1 2 3 4 5; do
             html=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
-            asset=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/$bundle?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
+            rm -f "$served"
+            curl -fsS --max-time 30 -H 'Cache-Control: no-cache' -o "$served" "$base/$bundle?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true
 
             case "$html" in
               *"$bundle"*)
-                case "$asset" in
-                  *"<!doctype html"*|*"<!DOCTYPE html"*|"")
-                    echo "Attempt $attempt: the page names $bundle, but the asset is an HTML fallback."
-                    ;;
-                  *)
-                    echo "$base serves $bundle. The live site is this build."
-                    exit 0
-                    ;;
-                esac
+                if [ -s "$served" ] && cmp -s "$served" "dist/$bundle"; then
+                  echo "$base serves $bundle, byte-identical to this build. The live site is this build."
+                  exit 0
+                fi
+                echo "Attempt $attempt: the page names $bundle, but the served file is missing or differs from dist/$bundle."
                 ;;
               *)
                 echo "Attempt $attempt: the live page does not name $bundle yet."
