@@ -1,0 +1,157 @@
+name: Build and deploy
+
+# Next Thyme is served from https://lelandrangel.com/nextthyme/, a subdirectory
+# of a document root shared with three other separately deployed projects: the
+# portfolio at the root, /pitchfork-ui/ and /extraction-point/.
+#
+# server-dir below is scoped to this project's own directory, so nothing here
+# can reach a sibling. That is deliberate and it is the whole safety model:
+# the portfolio's deploy, which owns the root, needs a hand-maintained exclude
+# list to avoid clobbering the others. This one needs nothing, because it
+# cannot see outside nextthyme/.
+#
+# Run from the Actions tab, against main only. Deploys were done by hand
+# before this existed.
+on:
+  workflow_dispatch:
+
+# The job only needs to read the repository. Without this the GITHUB_TOKEN
+# inherits the repository default, which can be write-capable, and the job
+# runs third-party actions and npm packages before it holds FTP credentials.
+# The deploy itself uses the FTP secrets, not this token.
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # workflow_dispatch lets anyone who can run it pick any branch in the
+      # Actions UI, and this job publishes straight to the production URL. A
+      # job-level `if:` would only mark a feature-branch run "skipped", which
+      # reads as fine at a glance; failing says why nothing was deployed.
+      - name: Refuse to deploy anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploys run from main only; this run was started on $GITHUB_REF. Merge first, then run it against main."
+          exit 1
+
+      # Every action is pinned to a full commit SHA, not a tag. A tag can be
+      # moved, and this job hands production FTP credentials to the deploy
+      # step: a retargeted or compromised release would run with them on the
+      # next manual deploy. Bump these deliberately, SHA and comment together.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        # The app reads its base path from the environment and defaults to '/'.
+        # Built without this it would request /assets/... from the domain root,
+        # which belongs to the portfolio, and every asset would fall into that
+        # site's SPA rewrite instead of 404ing.
+        #
+        # Relative rather than '/nextthyme/', because that is what the live
+        # site was built with and it is the better choice: the bundle stops
+        # caring which subdirectory it is served from. Verified by rebuilding
+        # current main this way and getting index-DZHROcoR.js, the same hash
+        # the live site is serving.
+        env:
+          VITE_BASE_PATH: ./
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          set -euo pipefail
+          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
+          grep -qF './assets/' dist/index.html \
+            || { echo "::error::dist/index.html does not reference ./assets/ -- VITE_BASE_PATH did not take"; exit 1; }
+          echo "Build output looks sane:"
+          ls -la dist | head -20
+
+      - name: Deploy to Hostinger over FTPS
+        uses: SamKirkland/FTP-Deploy-Action@8e83cea8672e3fbcbb9fdafff34debf6ae4c5f65 # v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./dist/
+          # Scoped to this project's directory. The path is relative to where
+          # the FTP account lands, which on this host is the user's home --
+          # NOT the document root. The portfolio's deploy shipped to "./" on
+          # 2026-09-22, uploaded a whole copy of the site to ~/, and reported
+          # success three times while the live site never changed.
+          server-dir: ./domains/lelandrangel.com/public_html/nextthyme/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+
+      # A green FTP step means the upload reported success, not that the site
+      # changed. The entry bundle is content-hashed, so its filename is a
+      # version marker: if the live page names the bundle this run just built,
+      # the bytes being served are the bytes just uploaded.
+      - name: Verify the live site serves this build
+        run: |
+          set -euo pipefail
+          base="https://lelandrangel.com/nextthyme"
+
+          # Assets are referenced relatively, so strip the leading './' to get
+          # a path that can be appended to the deployed base URL.
+          # `|| true` because under pipefail a grep with no match would end the
+          # step right here, and the explicit error below would never be seen.
+          bundle=$(grep -oE '\./assets/index-[A-Za-z0-9_-]+\.js' dist/index.html | head -1 | sed 's|^\./||' || true)
+          if [ -z "$bundle" ]; then
+            echo "::error::No hashed entry bundle found in dist/index.html -- cannot verify the deploy."
+            exit 1
+          fi
+          echo "Looking for $bundle"
+
+          # Normally a missing asset here is a real 404: this app's .htaccess
+          # passes assets/ straight through rather than rewriting it (checked
+          # live on 2026-09-24). But if that .htaccess ever fails to land, the
+          # portfolio's rules at the domain root take over, and those rewrite
+          # a missing file to the portfolio's index.html -- 200 with HTML. So
+          # the status code alone is not trusted.
+          #
+          # Nor is "it did not look like HTML": an error page, a JSON body or a
+          # fallback without a doctype would all pass that. The served bundle
+          # is compared byte for byte with the one this run built. curl sends
+          # no Accept-Encoding, so the host answers uncompressed; checked live
+          # on 2026-09-25, when the served index-DZHROcoR.js matched a local
+          # build of main exactly.
+          served="$RUNNER_TEMP/served-bundle.js"
+          for attempt in 1 2 3 4 5; do
+            html=$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "$base/?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true)
+            rm -f "$served"
+            curl -fsS --max-time 30 -H 'Cache-Control: no-cache' -o "$served" "$base/$bundle?cb=$GITHUB_RUN_ID-$attempt" 2>/dev/null || true
+
+            case "$html" in
+              *"$bundle"*)
+                if [ -s "$served" ] && cmp -s "$served" "dist/$bundle"; then
+                  echo "$base serves $bundle, byte-identical to this build. The live site is this build."
+                  exit 0
+                fi
+                echo "Attempt $attempt: the page names $bundle, but the served file is missing or differs from dist/$bundle."
+                ;;
+              *)
+                echo "Attempt $attempt: the live page does not name $bundle yet."
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "::error::$base did not serve $bundle after the upload reported success. Check that server-dir points at the directory the site is actually served from."
+          exit 1
