@@ -8,6 +8,17 @@
       content="Next Thyme is a local-first recipe box with searchable recipes, ingredient scaling, cooking directions, and browser-based persistence."
     />
     <meta name="theme-color" content="#f8f4ed" />
+
+    <!-- %BASE_URL% because this deploys into /nextthyme/ on a document root
+         shared with three other projects. Declaring nothing is what used to
+         happen, and a browser then falls back to the ORIGIN root's
+         /favicon.ico -- which is the portfolio's icon, not this site's.
+         Relative hrefs would not do either: the router serves real paths
+         like /nextthyme/recipe/pot-roast, where "favicon.ico" resolves to
+         /nextthyme/recipe/favicon.ico. -->
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="%BASE_URL%favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <meta property="og:title" content="Next Thyme Recipe Box" />
     <meta
       property="og:description"
