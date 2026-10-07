@@ -48,6 +48,12 @@ jobs:
       # next manual deploy. Bump these deliberately, SHA and comment together.
       # All three run on Node 24; the Node 20 versions were being forced onto it
       # with a deprecation warning on every run.
+      #
+      # Resolve a new SHA through the tag itself
+      # (gh api repos/OWNER/REPO/git/ref/tags/vX.Y.Z, then the tag object if it
+      # is annotated). commits/vX.Y.Z prefers a BRANCH of the same name, and
+      # FTP-Deploy-Action has one, which is how a non-release commit got
+      # pinned here once.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -83,7 +89,7 @@ jobs:
           ls -la dist | head -20
 
       - name: Deploy to Hostinger over FTPS
-        uses: SamKirkland/FTP-Deploy-Action@3a9c65ae0fc12ac924ccef8afc26941cc43aad0b # v4.4.0
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0 (the tag; a branch is also named v4.4.0)
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
