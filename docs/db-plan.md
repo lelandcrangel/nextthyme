@@ -69,7 +69,7 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
 
 | Method | Path | Auth |
 |---|---|---|
-| GET | `api/recipes.php`: all live recipes | none |
+| GET, HEAD | `api/recipes.php`: all live recipes | none |
 | POST | `api/recipes.php`: create | owner |
 | PUT | `api/recipes.php?id=`: update; `409` on a stale `version` | owner |
 | DELETE | `api/recipes.php?id=`: soft delete | owner |
@@ -110,7 +110,8 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
    - [x] `public/api/bootstrap.php`: config found and checked where it is loaded,
      PDO with real prepared statements, JSON responses with `no-store`, errors
      to the log and never into a body. Requested directly it is a 404.
-   - [x] `public/api/recipes.php`: `GET` only; every other method is a 405
+   - [x] `public/api/recipes.php`: `GET` (and `HEAD`, which is GET without the
+     body); every other method, `OPTIONS` included, is a 405
    - [x] `.htaccess`: `api/` passes straight through, and `bootstrap.php` returns a 404
    - [x] `recipeStorage.ts` reads the API when `VITE_RECIPES_API` is set
      (`npm run dev:api`), read-only, and falls back to the bundled samples

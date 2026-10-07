@@ -6,6 +6,8 @@ declare(strict_types=1);
  * The recipe box.
  *
  *   GET  all live recipes, in display order. No login: visitors read.
+ *        HEAD is answered too, as GET without the body, which is what the
+ *        HTTP spec asks of any resource that answers GET.
  *
  * Writes (POST / PUT / DELETE, owner only) arrive in phase 3 of
  * docs/db-plan.md. Until then every other method is refused, so there is no
@@ -16,9 +18,6 @@ require __DIR__ . '/bootstrap.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-if ($method === 'OPTIONS') {
-    nt_respond(204, [], ['Allow' => 'GET, HEAD']);
-}
 if ($method !== 'GET' && $method !== 'HEAD') {
     nt_respond(405, ['error' => 'method'], ['Allow' => 'GET, HEAD']);
 }
