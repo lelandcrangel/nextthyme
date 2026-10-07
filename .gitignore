@@ -5,3 +5,7 @@ playwright-report/
 lighthouse-report.html
 lighthouse-report*.json
 .DS_Store
+
+# Real config never lives in the repo; see config.example.php
+config.php
+*-config.php
