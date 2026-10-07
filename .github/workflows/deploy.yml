@@ -46,9 +46,11 @@ jobs:
       # moved, and this job hands production FTP credentials to the deploy
       # step: a retargeted or compromised release would run with them on the
       # next manual deploy. Bump these deliberately, SHA and comment together.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # All three run on Node 24; the Node 20 versions were being forced onto it
+      # with a deprecation warning on every run.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -81,7 +83,7 @@ jobs:
           ls -la dist | head -20
 
       - name: Deploy to Hostinger over FTPS
-        uses: SamKirkland/FTP-Deploy-Action@8e83cea8672e3fbcbb9fdafff34debf6ae4c5f65 # v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@3a9c65ae0fc12ac924ccef8afc26941cc43aad0b # v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
