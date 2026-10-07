@@ -34,6 +34,11 @@ test('reads the recipe box from the API, read-only', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Easy Lasagna Rolls/i })).toBeVisible();
   await expect(page.getByText(FALLBACK_NOTICE)).toBeHidden();
 
+  // Non-ASCII survives the trip. The fixture once carried "275Â°F": the seed
+  // had been imported through a latin1 client and PDO read the damage back.
+  await expect(page.getByText(/Heat the oven to 275°F\./)).toBeVisible();
+  await expect(page.getByText(/Â/)).toHaveCount(0);
+
   // A visitor cannot change anything.
   await expect(page.getByRole('button', { name: /Add recipe/i })).toBeHidden();
   await expect(page.getByRole('button', { name: /Edit recipe/i })).toBeHidden();
