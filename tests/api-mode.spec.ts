@@ -64,6 +64,19 @@ test('falls back to the samples, read-only, when the API fails', async ({ page }
   await expect(page.getByRole('button', { name: /Edit recipe/i })).toBeHidden();
 });
 
+test('falls back when the API never answers', async ({ page }) => {
+  // RECIPES_API_TIMEOUT_MS in recipeStorage.ts is 8 s; this waits past it.
+  test.setTimeout(30_000);
+  await page.route('**/api/recipes.php', () => {
+    // Deliberately never fulfilled: a stalled PHP worker or MySQL connection.
+  });
+  await page.goto('/');
+
+  await expect(page.getByText('Loading recipes…').first()).toBeVisible();
+  await expect(page.getByText(FALLBACK_NOTICE)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Perfect Sunday Pot Roast' })).toBeVisible();
+});
+
 test('falls back rather than crashing on a malformed recipe', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
