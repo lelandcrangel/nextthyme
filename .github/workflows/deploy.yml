@@ -75,8 +75,15 @@ jobs:
         # caring which subdirectory it is served from. Verified by rebuilding
         # current main this way and getting index-DZHROcoR.js, the same hash
         # the live site is serving.
+        #
+        # VITE_RECIPES_API switches the app from localStorage to the recipe API
+        # (docs/db-plan.md). It is a repository variable, not a code change, and
+        # it must stay unset until the Hostinger database and config exist --
+        # set early, every visitor gets the "could not be reached" fallback.
+        # Production value: /nextthyme/api/recipes.php
         env:
           VITE_BASE_PATH: ./
+          VITE_RECIPES_API: ${{ vars.VITE_RECIPES_API }}
         run: npm run build
 
       - name: Verify build output
@@ -87,6 +94,15 @@ jobs:
             || { echo "::error::dist/index.html does not reference ./assets/ -- VITE_BASE_PATH did not take"; exit 1; }
           echo "Build output looks sane:"
           ls -la dist | head -20
+
+      # There is no PHP in the build, so a parse error in an endpoint would
+      # pass every check above and land as a 500 for every request. Linting
+      # here fails the run while the working copy is still live.
+      - name: Lint the PHP endpoints
+        run: |
+          set -euo pipefail
+          php --version | head -1
+          for f in dist/api/*.php; do php -l "$f"; done
 
       - name: Deploy to Hostinger over FTPS
         uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0 (the tag; a branch is also named v4.4.0)
