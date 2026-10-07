@@ -7,6 +7,11 @@ Options -MultiViews
   RewriteRule ^index\.html$ - [L]
   RewriteRule ^(?:assets|images)/ - [L]
 
+  # The API answers for itself: a mistyped endpoint is a 404, not the SPA's
+  # index.html with a 200. bootstrap.php is shared code, not an endpoint.
+  RewriteRule ^api/bootstrap\.php$ - [R=404,L]
+  RewriteRule ^api/ - [L]
+
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]

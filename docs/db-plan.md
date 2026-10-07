@@ -1,6 +1,6 @@
 # Moving Next Thyme to MySQL on Hostinger
 
-Status: phase 1 done; phase 2 next on `claude/mysql-backend`.
+Status: phases 1 and 2 done on `claude/mysql-backend`; phase 3 next.
 
 ## Decisions
 
@@ -103,9 +103,19 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
    - [x] `config.example.php`, `db/README.md`
    - [x] local PHP 8.5 + MariaDB, a `php -S` dev server (`npm run api`), and a
      Vite proxy that sends `/api` to it. See "Local development" in `db/README.md`
-2. **Reading from the database.** `GET recipes.php`, and the frontend reads
-   through the API with the fallback. This phase can go live alone, because
+2. **Reading from the database.** This phase can go live alone, because
    nothing can be written yet.
+   - [x] `public/api/bootstrap.php`: config found and checked where it is loaded,
+     PDO with real prepared statements, JSON responses with `no-store`, errors
+     to the log and never into a body. Requested directly it is a 404.
+   - [x] `public/api/recipes.php`: `GET` only; every other method is a 405
+   - [x] `.htaccess`: `api/` passes straight through, and `bootstrap.php` returns a 404
+   - [x] `recipeStorage.ts` reads the API when `VITE_RECIPES_API` is set
+     (`npm run dev:api`), read-only, and falls back to the bundled samples
+     with a notice when it cannot. Unset, it behaves exactly as before.
+   - [x] Verified locally: the four existing smoke tests pass, a title changed in
+     MariaDB shows on reload, stopping the API shows the fallback, and a
+     missing config gives a bare 500 with the path in the log.
 3. **Login and writing.** `session.php`, create/update/delete, the `409`
    handling in the form, and a delete button. The form's generated ids have
    an unbounded slug, so clamp them to fit `VARCHAR(128)`.
@@ -129,4 +139,6 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
 3. Copy `config.example.php` to `~/domains/lelandrangel.com/nextthyme-config.php`
    and fill it in. The owner generates the password hash and pastes it in by
    hand.
-4. Build with `VITE_RECIPES_API` set, then deploy.
+4. Build with `VITE_RECIPES_API=/nextthyme/api/recipes.php`, then deploy. The
+   deploy workflow does not set it yet. Add it only after steps 1–3, or every
+   visitor sees the fallback notice.

@@ -112,9 +112,11 @@ repository. Copy `config.example.php` there, point `db` at `127.0.0.1` /
 Then run the two servers side by side:
 
 ```bash
-npm run api     # php -S 127.0.0.1:8080 -t public
-npm run dev     # Vite on :5173, proxying /api to the PHP server
+npm run api       # php -S 127.0.0.1:8080 -t public
+npm run dev:api   # Vite on :5173 reading the database through /api
 ```
+
+Plain `npm run dev` still reads localStorage and needs neither server.
 
 Resetting is a drop and re-import:
 

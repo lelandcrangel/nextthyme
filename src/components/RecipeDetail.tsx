@@ -19,7 +19,8 @@ import { formatIngredientAmount, scaleIngredient } from '../utils/scaleIngredien
 
 type RecipeDetailProps = {
   recipe: Recipe;
-  onEditRecipe: (recipeId: string) => void;
+  // Absent for a read-only visitor, and so is the button.
+  onEditRecipe?: (recipeId: string) => void;
 };
 
 export function RecipeDetail({ recipe, onEditRecipe }: RecipeDetailProps) {
@@ -102,9 +103,11 @@ export function RecipeDetail({ recipe, onEditRecipe }: RecipeDetailProps) {
               <button onClick={copyShoppingList} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-3 text-sm font-bold text-stone-950 shadow-sm transition hover:bg-amber-100 sm:w-auto">
                 <Copy size={17} /> Copy ingredients
               </button>
-              <button onClick={() => onEditRecipe(recipe.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/60 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25 sm:w-auto">
-                <Pencil size={17} /> Edit recipe
-              </button>
+              {onEditRecipe && (
+                <button onClick={() => onEditRecipe(recipe.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/60 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25 sm:w-auto">
+                  <Pencil size={17} /> Edit recipe
+                </button>
+              )}
               <button onClick={printRecipe} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/50 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20 sm:w-auto">
                 <Printer size={17} /> Print recipe
               </button>
