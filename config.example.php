@@ -26,11 +26,11 @@ return [
         // PHP on Hostinger reaches MySQL on localhost. Remote MySQL is not
         // needed and should stay off.
         'host' => 'localhost',
-        // Its own database, separate from the portfolio's and the playtest's,
-        // with its own user that can SELECT/INSERT/UPDATE/DELETE and nothing
-        // else. Hostinger prefixes both names with the account id.
-        'name' => 'u334379448_nextthyme',
-        'user' => 'u334379448_xxxxx',
+        // Its own database and user, separate from the portfolio's, the
+        // contact form's and the playtest's. (The name's spelling is what
+        // Hostinger has; it was created that way.)
+        'name' => 'u334379448_recipies',
+        'user' => 'u334379448_recipies',
         'password' => '',
     ],
 

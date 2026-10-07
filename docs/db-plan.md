@@ -41,8 +41,10 @@ website entry and cannot sit under `/nextthyme/`.
   `Development/lelandrangel.com/nextthyme-config.php`, outside every repository,
   so dev and production resolve the config identically. The template is
   `config.example.php`.
-- **It gets its own database and user** (`u334379448_nextthyme`), with no
-  privileges on the portfolio or playtest databases.
+- **It gets its own database and user** (`u334379448_recipies`), with no
+  privileges on the portfolio, contact or playtest databases. Within its own
+  database the user has every privilege, DROP included. Hostinger creates
+  every database user that way, so the separate database is the boundary.
 - **The app connects to `localhost`.** Hostinger's `srvNNNN.hstgr.io` host is
   only for connections from outside Hostinger.
 

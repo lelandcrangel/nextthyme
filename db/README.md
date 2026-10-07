@@ -5,21 +5,27 @@ the reasoning behind it are in `docs/db-plan.md`.
 
 ## Which database
 
-`u334379448_nextthyme` on lelandrangel.com, **separate from the portfolio's
-content database and the playtest database**, with its own user. It holds no
-personal data (recipes, uploaded photos, and salted hashes of login attempts),
-but it is the first database on the account that the public can cause writes
-to, via the login endpoint. So it gets its own credentials.
+`u334379448_recipies` on lelandrangel.com (spelled as Hostinger has it; it was
+created that way on 2026-09-22), with its own user, `u334379448_recipies`.
+It is **separate from the portfolio's, the contact form's and the playtest's
+databases**. It holds no personal data (recipes, uploaded photos, and salted
+hashes of login attempts), but it is the first database on the account that
+the public can cause writes to, via the login endpoint. So it gets its own
+credentials.
 
-The database user needs `SELECT, INSERT, UPDATE, DELETE` on this database and
-nothing else. `DELETE` is for pruning `login_attempts`; recipes are never hard
-deleted, since `deleted_at` hides them.
+**The user has every privilege on this database, including DROP.** That is
+how Hostinger's shared hosting creates database users; there is no way to
+narrow it from hPanel, and every other database on the account is the same.
+The boundary that holds is the database itself: this user cannot reach the
+other three. The endpoints only ever SELECT, INSERT and UPDATE recipes, and
+DELETE only from `login_attempts`. Locally, the dev user is given just those
+four grants, so a query that needs more fails in development first.
 
 ## Applying it
 
 There is no migration runner. Apply through phpMyAdmin:
 
-> hPanel → Databases → phpMyAdmin → **select `u334379448_nextthyme` first** →
+> hPanel → Databases → phpMyAdmin → **select `u334379448_recipies` first** →
 > Import → each file below, in order → Go
 
 1. `db/migrations/001_recipes.sql`: the tables
