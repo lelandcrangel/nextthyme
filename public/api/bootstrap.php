@@ -21,6 +21,8 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
 // Errors go to the server log, never into a response body: a PDO message
 // can carry the database name, the user, and the query.
 ini_set('display_errors', '0');
+// Hostinger ships log_errors Off; without this, nt_fail()'s reasons vanish.
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 /**
