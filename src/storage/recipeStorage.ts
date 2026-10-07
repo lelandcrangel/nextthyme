@@ -167,16 +167,31 @@ function isApiRecipe(value: unknown): value is ApiRecipe {
   );
 }
 
+// A server that fails answers quickly; one that hangs (a stuck PHP worker, a
+// MySQL connection that never completes) would otherwise leave the page on
+// "Loading recipes…" for good. Past this, give up and show the samples. It
+// covers reading the body too, since a response can stall halfway.
+export const RECIPES_API_TIMEOUT_MS = 8000;
+
 async function fetchApiRecipes(): Promise<Recipe[]> {
-  const response = await fetch(recipesApi, {
-    headers: { Accept: 'application/json' },
-    credentials: 'same-origin',
-  });
-  if (!response.ok) {
-    throw new Error(`Recipe API answered ${response.status}.`);
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), RECIPES_API_TIMEOUT_MS);
+
+  let body: unknown;
+  try {
+    const response = await fetch(recipesApi, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Recipe API answered ${response.status}.`);
+    }
+    body = await response.json();
+  } finally {
+    window.clearTimeout(timer);
   }
 
-  const body: unknown = await response.json();
   const list = (body as { recipes?: unknown })?.recipes;
   if (!Array.isArray(list) || !list.every(isApiRecipe)) {
     throw new Error('Recipe API returned something that is not a recipe list.');
