@@ -96,18 +96,74 @@ type ApiRecipe = Omit<Recipe, 'imageUrl' | 'imageSmallUrl'> & {
   imageSmallUrl: string | null;
 };
 
+// The whole shape, nested members included. The database only guarantees that
+// each JSON column is valid JSON, not that it is the right JSON: a row with
+// `equipment = {}` would otherwise reach RecipeDetail and crash on `.join`,
+// where a rejected response falls back to the samples instead.
+type Shape = Record<string, unknown>;
+
+const isObject = (value: unknown): value is Shape => typeof value === 'object' && value !== null && !Array.isArray(value);
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const isOptional = (value: unknown, check: (value: unknown) => boolean) => value === undefined || check(value);
+const isStringList = (value: unknown) => Array.isArray(value) && value.every(isString);
+const isNullableString = (value: unknown) => value === null || isString(value);
+
+function isIngredient(value: unknown) {
+  return (
+    isObject(value) &&
+    isString(value.id) &&
+    isString(value.name) &&
+    isNumber(value.quantity) &&
+    isString(value.unit) &&
+    isOptional(value.notes, isString) &&
+    isOptional(value.section, isString)
+  );
+}
+
+function isDirectionStep(value: unknown) {
+  return isObject(value) && isString(value.id) && isNumber(value.order) && isString(value.instruction);
+}
+
+function isNutrition(value: unknown) {
+  return (
+    isObject(value) &&
+    isNumber(value.calories) &&
+    isString(value.protein) &&
+    isString(value.fat) &&
+    isString(value.carbohydrates)
+  );
+}
+
+const cookingMethods: unknown[] = ['Oven', 'Stovetop', 'Microwave'];
+
 function isApiRecipe(value: unknown): value is ApiRecipe {
-  if (typeof value !== 'object' || value === null) {
+  if (!isObject(value)) {
     return false;
   }
-  const recipe = value as Record<string, unknown>;
+  const textFields = [
+    'id', 'title', 'description', 'category', 'cuisine', 'difficulty', 'imageAlt', 'imageCredit',
+    'imageCreditUrl', 'history', 'yieldLabel', 'nextTimeNotes', 'leftoverStorage',
+  ];
+  const numberFields = ['servings', 'prepTimeMinutes', 'cookTimeMinutes', 'totalTimeMinutes'];
+
   return (
-    typeof recipe.id === 'string' &&
-    typeof recipe.title === 'string' &&
-    typeof recipe.servings === 'number' &&
-    Array.isArray(recipe.ingredients) &&
-    Array.isArray(recipe.directions) &&
-    Array.isArray(recipe.tags)
+    textFields.every((field) => isString(value[field])) &&
+    numberFields.every((field) => isNumber(value[field])) &&
+    isNullableString(value.imageUrl) &&
+    isNullableString(value.imageSmallUrl) &&
+    isOptional(value.cookingMethod, (method) => cookingMethods.includes(method)) &&
+    isOptional(value.ovenTempF, isNumber) &&
+    isOptional(value.version, isNumber) &&
+    isStringList(value.tags) &&
+    isStringList(value.equipment) &&
+    isStringList(value.tips) &&
+    isStringList(value.similarRecipeIds) &&
+    Array.isArray(value.ingredients) &&
+    value.ingredients.every(isIngredient) &&
+    Array.isArray(value.directions) &&
+    value.directions.every(isDirectionStep) &&
+    isNutrition(value.nutrition)
   );
 }
 
