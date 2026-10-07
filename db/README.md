@@ -93,8 +93,11 @@ brew install php mariadb
 brew services run mariadb        # this session only; `start` also starts at login
 ```
 
-Create the database and a user with the same narrow grants as production.
-`mariadb` as your macOS user connects as an administrator through the socket:
+Create the database and a user. Locally the user gets only the four
+privileges the endpoints use. That is narrower than production, where
+Hostinger grants every privilege (see "Which database"); it is deliberate, so
+a query that needs more fails here first. `mariadb` as your macOS user
+connects as an administrator through the socket:
 
 ```sql
 CREATE DATABASE nextthyme_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
