@@ -1,9 +1,7 @@
 import { Check, Image, ListPlus, Save, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { placeholderImage } from '../data/placeholderImage';
 import type { CookingMethod, DirectionStep, Ingredient, Recipe } from '../types/recipe';
-
-const placeholderImage =
-  'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 630%22%3E%3Crect width=%221200%22 height=%22630%22 fill=%22%23292524%22/%3E%3Ccircle cx=%22940%22 cy=%22156%22 r=%22104%22 fill=%22%23f59e0b%22 opacity=%22.88%22/%3E%3Cpath d=%22M0 462c148-88 312-112 492-72 164 36 306 18 432-54 104-60 196-76 276-48v342H0z%22 fill=%22%23fb923c%22 opacity=%22.82%22/%3E%3Cpath d=%22M0 520c176-72 344-82 504-30 152 50 308 42 468-24 80-34 156-42 228-24v188H0z%22 fill=%22%23fef3c7%22 opacity=%22.92%22/%3E%3Ctext x=%2260%22 y=%22212%22 fill=%22%23fff7ed%22 font-family=%22Inter,Arial,sans-serif%22 font-size=%2276%22 font-weight=%22800%22%3ENext Thyme%3C/text%3E%3Ctext x=%2264%22 y=%22276%22 fill=%22%23fed7aa%22 font-family=%22Inter,Arial,sans-serif%22 font-size=%2234%22 font-weight=%22600%22%3EYour saved recipe%3C/text%3E%3C/svg%3E';
 
 type RecipeFormProps = {
   recipe?: Recipe;

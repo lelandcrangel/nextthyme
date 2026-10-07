@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "VITE_RECIPES_API=/api/recipes.php vite",
     "api": "php -S 127.0.0.1:8080 -t public",
     "images:optimize": "node scripts/optimize-recipe-images.mjs",
     "db:seed-sql": "node scripts/generate-seed-sql.mjs",

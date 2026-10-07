@@ -4,20 +4,25 @@ import { useMemo, useState } from 'react';
 
 type RecipeListProps = {
   recipes: Recipe[];
+  isLoading?: boolean;
   selectedRecipeId: string;
   onSelectRecipe: (recipeId: string) => void;
-  onAddRecipe: () => void;
+  // Absent for a read-only visitor, and so is the button.
+  onAddRecipe?: () => void;
   onRestoreRecipes: () => void;
   showRestoreRecipes: boolean;
+  notice?: string;
 };
 
 export function RecipeList({
   recipes,
+  isLoading = false,
   selectedRecipeId,
   onSelectRecipe,
   onAddRecipe,
   onRestoreRecipes,
   showRestoreRecipes,
+  notice,
 }: RecipeListProps) {
   const [query, setQuery] = useState('');
   const filteredRecipes = useMemo(() => {
@@ -43,14 +48,16 @@ export function RecipeList({
           <h1 className="mt-2 text-2xl font-black tracking-tight text-stone-950">Recipe Box</h1>
         </div>
         <div className="flex shrink-0 gap-2 lg:mt-4 lg:grid">
-          <button
-            type="button"
-            onClick={onAddRecipe}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-700 px-3 text-sm font-bold text-white transition hover:bg-red-800 lg:w-full"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline lg:inline">Add recipe</span>
-          </button>
+          {onAddRecipe && (
+            <button
+              type="button"
+              onClick={onAddRecipe}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-700 px-3 text-sm font-bold text-white transition hover:bg-red-800 lg:w-full"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline lg:inline">Add recipe</span>
+            </button>
+          )}
           {showRestoreRecipes && (
             <button
               type="button"
@@ -63,6 +70,12 @@ export function RecipeList({
           )}
         </div>
       </div>
+
+      {notice && (
+        <p role="status" className="mx-auto mt-4 max-w-6xl rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-5 text-amber-900 lg:max-w-none">
+          {notice}
+        </p>
+      )}
 
       <label htmlFor="recipe-search" className="mx-auto mt-4 flex h-11 max-w-6xl items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 text-sm text-stone-500 lg:max-w-none">
         <Search size={16} />
@@ -80,7 +93,7 @@ export function RecipeList({
         <div className="flex gap-3 lg:block lg:space-y-3">
           {filteredRecipes.length === 0 && (
             <div className="w-72 shrink-0 rounded-md border border-stone-200 bg-stone-50 p-4 text-sm leading-6 text-stone-600 lg:w-full">
-              No recipes match that search.
+              {isLoading ? 'Loading recipes…' : query.trim() ? 'No recipes match that search.' : 'No recipes yet.'}
             </div>
           )}
 

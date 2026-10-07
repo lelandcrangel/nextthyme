@@ -49,4 +49,7 @@ export type Recipe = {
   nextTimeNotes: string;
   leftoverStorage: string;
   similarRecipeIds: string[];
+  // Set by the server: an update names the version it edited, and a stale one
+  // is refused. Absent for recipes that only exist in localStorage.
+  version?: number;
 };
