@@ -1,7 +1,7 @@
 import { Check, Image, ListPlus, Save, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { placeholderImage } from '../data/placeholderImage';
-import type { CookingMethod, DirectionStep, Ingredient, Recipe } from '../types/recipe';
+import { COOKING_METHODS, METHODS_WITHOUT_TEMPERATURE, type CookingMethod, type DirectionStep, type Ingredient, type Recipe } from '../types/recipe';
 
 type RecipeFormProps = {
   recipe?: Recipe;
@@ -68,7 +68,7 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
       cookTimeMinutes,
       totalTimeMinutes,
       cookingMethod,
-      ovenTempF: cookingMethod === 'Microwave' || !ovenTempF ? undefined : Number(ovenTempF),
+      ovenTempF: METHODS_WITHOUT_TEMPERATURE.includes(cookingMethod) || !ovenTempF ? undefined : Number(ovenTempF),
       tags: parseCommaList(tagsText),
       equipment: parseCommaList(equipmentText),
       ingredients,
@@ -237,12 +237,12 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
                     onChange={(event) => setCookingMethod(event.target.value as CookingMethod)}
                     className={fieldClassName}
                   >
-                    <option>Oven</option>
-                    <option>Stovetop</option>
-                    <option>Microwave</option>
+                    {COOKING_METHODS.map((method) => (
+                      <option key={method}>{method}</option>
+                    ))}
                   </select>
                 </Field>
-                {cookingMethod !== 'Microwave' && (
+                {!METHODS_WITHOUT_TEMPERATURE.includes(cookingMethod) && (
                   <Field label="Oven °F" htmlFor="recipe-oven">
                     <input id="recipe-oven" type="number" min="0" value={ovenTempF} onChange={(event) => setOvenTempF(event.target.value)} className={fieldClassName} />
                   </Field>

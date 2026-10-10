@@ -1,6 +1,6 @@
 import { placeholderImage } from '../data/placeholderImage';
 import { seedRecipes } from '../data/seedRecipes';
-import type { Recipe } from '../types/recipe';
+import { COOKING_METHODS, type Recipe } from '../types/recipe';
 
 // The only module that knows where recipes come from. Components get a list
 // and a few flags; none of them learn whether there is a server.
@@ -135,7 +135,7 @@ function isNutrition(value: unknown) {
   );
 }
 
-const cookingMethods: unknown[] = ['Oven', 'Stovetop', 'Microwave'];
+const cookingMethods: readonly unknown[] = COOKING_METHODS;
 
 function isApiRecipe(value: unknown): value is ApiRecipe {
   if (!isObject(value)) {

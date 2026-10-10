@@ -14,7 +14,7 @@ import {
   Timer,
   Utensils,
 } from 'lucide-react';
-import type { Ingredient, Recipe } from '../types/recipe';
+import { METHODS_WITHOUT_TEMPERATURE, type Ingredient, type Recipe } from '../types/recipe';
 import { formatIngredientAmount, scaleIngredient } from '../utils/scaleIngredient';
 
 type RecipeDetailProps = {
@@ -276,8 +276,8 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 function formatCookingMethod(recipe: Recipe) {
   const cookingMethod = recipe.cookingMethod ?? (recipe.ovenTempF ? 'Oven' : 'Stovetop');
 
-  if (cookingMethod === 'Microwave') {
-    return 'Microwave';
+  if (METHODS_WITHOUT_TEMPERATURE.includes(cookingMethod)) {
+    return cookingMethod;
   }
 
   return recipe.ovenTempF ? `${cookingMethod} ${recipe.ovenTempF}°F` : cookingMethod;
