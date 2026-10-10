@@ -29,7 +29,18 @@ There is no migration runner. Apply through phpMyAdmin:
 > Import → each file below, in order → Go
 
 1. `db/migrations/001_recipes.sql`: the tables
-2. `db/seed/002_seed_recipes.sql`: the six sample recipes
+2. `db/migrations/003_slow_cooker_method.sql`: adds the 'Slow cooker' method
+3. `db/seed/002_seed_recipes.sql`: the ten sample recipes
+
+**The seed goes last, whatever its number.** It is numbered 002 because it
+came second; 003 was added later and the seed now includes a slow cooker
+recipe, whose row is refused until 003 has widened the column. Import the
+seed first by mistake and it stops at that row with an error. Nothing is
+damaged: apply 003 and import the seed again.
+
+**Adding sample recipes later** is the same last step: add them to
+`src/data/seedRecipes.ts`, run `npm run db:seed-sql`, and re-import the seed.
+Only ids the database does not have yet are inserted.
 
 The files contain no `CREATE DATABASE` and no `USE`, so they load into whatever
 database is selected. Selecting it first is the step that is easy to skip.

@@ -59,6 +59,20 @@ test('resolves relative image paths, and draws the placeholder for none', async 
   await expect(noPhoto).toHaveAttribute('src', /^data:image\/svg\+xml,/);
 });
 
+test('shows a slow cooker recipe as a slow cooker recipe', async ({ page }) => {
+  await answerRecipes(page, { body: copyOfFixture() });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /Slow Cooker Pot Roast/i }).click();
+
+  // Before 'Slow cooker' was a method, a recipe naming none fell back to
+  // "Stovetop". The stat tile reads label + value with no space between.
+  await expect(page.getByRole('heading', { name: 'Slow Cooker Pot Roast' })).toBeVisible();
+  await expect(page.getByText('MethodSlow cooker')).toBeVisible();
+  await expect(page.getByText('Cook on low for 8–9 hours, or on high for 5–6 hours.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Slow Cooker Pot Roast/i }).getByRole('img')).toHaveAttribute('src', /^data:image\/svg\+xml,/);
+});
+
 test('falls back to the samples, read-only, when the API fails', async ({ page }) => {
   await answerRecipes(page, { status: 500, body: { error: 'server' } });
   await page.goto('/');
