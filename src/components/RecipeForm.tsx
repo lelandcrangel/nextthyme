@@ -6,10 +6,15 @@ import { COOKING_METHODS, METHODS_WITHOUT_TEMPERATURE, type CookingMethod, type 
 type RecipeFormProps = {
   recipe?: Recipe;
   onCancel: () => void;
-  onSave: (recipe: Recipe) => void;
+  // May be asynchronous. Resolving to a string means the save did not happen
+  // and that sentence should be shown; the form stays open with its edits.
+  onSave: (recipe: Recipe) => void | Promise<string | void>;
+  // False when recipes live on the server: a photo cannot ride inside a
+  // recipe there, and uploading one properly is its own step (phase 4).
+  allowImageUpload?: boolean;
 };
 
-export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
+export function RecipeForm({ recipe, onCancel, onSave, allowImageUpload = true }: RecipeFormProps) {
   const isEditing = Boolean(recipe);
   const [title, setTitle] = useState(recipe?.title ?? '');
   const [description, setDescription] = useState(recipe?.description ?? '');
@@ -23,7 +28,9 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
   const [cookTimeMinuteRemainder, setCookTimeMinuteRemainder] = useState((recipe?.cookTimeMinutes ?? 30) % 60);
   const [cookingMethod, setCookingMethod] = useState<CookingMethod>(getInitialCookingMethod(recipe));
   const [ovenTempF, setOvenTempF] = useState(recipe?.ovenTempF ? String(recipe.ovenTempF) : '');
-  const [imageUrl, setImageUrl] = useState(recipe?.imageUrl ?? '');
+  // The placeholder is "no image", so the field starts empty rather than
+  // showing a kilobyte of data: URL.
+  const [imageUrl, setImageUrl] = useState(recipe && recipe.imageUrl !== placeholderImage ? recipe.imageUrl : '');
   const [imageUploadName, setImageUploadName] = useState('');
   const [ingredientsText, setIngredientsText] = useState(recipe ? formatIngredients(recipe.ingredients) : '');
   const [directionsText, setDirectionsText] = useState(recipe ? formatDirections(recipe.directions) : '');
@@ -33,15 +40,26 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
   const [leftoverStorage, setLeftoverStorage] = useState(recipe?.leftoverStorage ?? '');
   const [nextTimeNotes, setNextTimeNotes] = useState(recipe?.nextTimeNotes ?? '');
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const cookTimeMinutes = useMemo(() => cookTimeHours * 60 + cookTimeMinuteRemainder, [cookTimeHours, cookTimeMinuteRemainder]);
   const totalTimeMinutes = useMemo(() => prepTimeMinutes + cookTimeMinutes, [cookTimeMinutes, prepTimeMinutes]);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const ingredients = parseIngredients(ingredientsText);
-    const directions = parseDirections(directionsText);
+    if (isSaving) {
+      return;
+    }
+
+    // The textareas are a lossy view: sections, notes and units like "to
+    // taste" do not survive being written out and read back. So a list the
+    // owner did not touch is kept exactly as it was, and only an edited one
+    // is re-read from the text.
+    const ingredients =
+      recipe && ingredientsText === formatIngredients(recipe.ingredients) ? recipe.ingredients : parseIngredients(ingredientsText);
+    const directions =
+      recipe && directionsText === formatDirections(recipe.directions) ? recipe.directions : parseDirections(directionsText);
 
     if (!title.trim() || !description.trim() || ingredients.length === 0 || directions.length === 0) {
       setError('Add a title, description, at least one ingredient, and at least one direction.');
@@ -49,6 +67,9 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
     }
 
     const finalImageUrl = imageUrl.trim() || placeholderImage;
+    // An image left alone keeps everything that goes with it: the smaller
+    // file for the list, and the alt text someone wrote for it.
+    const imageUnchanged = recipe !== undefined && recipe.imageUrl === finalImageUrl;
     const savedRecipe: Recipe = {
       id: recipe?.id ?? createRecipeId(title),
       title: title.trim(),
@@ -57,8 +78,8 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
       cuisine: cuisine.trim() || 'Home cooking',
       difficulty: difficulty.trim() || 'Easy',
       imageUrl: finalImageUrl,
-      imageSmallUrl: finalImageUrl,
-      imageAlt: `${title.trim()} recipe`,
+      imageSmallUrl: imageUnchanged ? recipe.imageSmallUrl : finalImageUrl,
+      imageAlt: imageUnchanged ? recipe.imageAlt : `${title.trim()} recipe`,
       imageCredit: getImageCredit(recipe, finalImageUrl),
       imageCreditUrl: getImageCreditUrl(recipe, finalImageUrl),
       history: recipe?.history ?? '',
@@ -83,9 +104,22 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
       nextTimeNotes: nextTimeNotes.trim() || 'Add a note after you make it once.',
       leftoverStorage: leftoverStorage.trim() || 'Store leftovers in an airtight container in the refrigerator.',
       similarRecipeIds: recipe?.similarRecipeIds ?? [],
+      // Present only for a recipe the server already has. It is how the
+      // server tells an edit from a new recipe, and a stale edit from a
+      // current one.
+      ...(recipe?.version === undefined ? {} : { version: recipe.version }),
     };
 
-    onSave(savedRecipe);
+    setError('');
+    setIsSaving(true);
+    const problem = await onSave(savedRecipe);
+    // On success the parent has already closed this form; only a failure
+    // leaves it mounted to hear about it.
+    if (problem) {
+      setIsSaving(false);
+      setError(problem);
+      window.scrollTo?.({ top: 0 });
+    }
   }
 
   async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -117,8 +151,8 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
             <button type="button" onClick={onCancel} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 text-sm font-bold text-stone-700 transition hover:border-stone-400 hover:bg-stone-50">
               <X size={17} /> Cancel
             </button>
-            <button type="submit" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red-700 px-4 text-sm font-bold text-white transition hover:bg-red-800">
-              <Save size={17} /> {isEditing ? 'Save changes' : 'Save recipe'}
+            <button type="submit" disabled={isSaving} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red-700 px-4 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-wait disabled:opacity-70">
+              <Save size={17} /> {isSaving ? 'Saving…' : isEditing ? 'Save changes' : 'Save recipe'}
             </button>
           </div>
         </div>
@@ -256,6 +290,7 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
             <section className="rounded-md border border-stone-200 bg-white p-5 shadow-sm">
               <h2 className="flex items-center gap-2 text-xl font-black text-stone-950"><Image size={21} /> Image</h2>
               <div className="mt-5 grid gap-4">
+                {allowImageUpload && (
                 <Field label="Upload image" htmlFor="recipe-image-upload">
                   <input
                     id="recipe-image-upload"
@@ -273,8 +308,14 @@ export function RecipeForm({ recipe, onCancel, onSave }: RecipeFormProps) {
                     </span>
                   )}
                 </Field>
+                )}
                 <Field label="Image URL" htmlFor="recipe-image">
                   <input id="recipe-image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://..." className={fieldClassName} />
+                  {!allowImageUpload && (
+                    <span className="mt-2 block text-xs font-medium leading-5 text-stone-500">
+                      Paste a link to a photo, or leave it empty for the placeholder. Uploading a photo from here is not built yet.
+                    </span>
+                  )}
                 </Field>
                 <img src={imageUrl || placeholderImage} alt="" className="aspect-[16/9] w-full rounded object-cover" />
               </div>
@@ -464,7 +505,9 @@ function createRecipeId(title: string) {
     .replace(/^-|-$/g, '');
   const suffix = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : `${Date.now()}`;
 
-  return `custom-${slug || 'recipe'}-${suffix}`;
+  // The id column is 128 wide and a title can be 200, so the slug is cut to
+  // leave room for the prefix and suffix.
+  return `custom-${slug.slice(0, 80).replace(/-$/, '') || 'recipe'}-${suffix}`;
 }
 
 function readFileAsDataUrl(file: File) {

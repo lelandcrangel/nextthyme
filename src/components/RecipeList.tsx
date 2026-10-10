@@ -1,6 +1,17 @@
 import type { Recipe } from '../types/recipe';
-import { Clock, Plus, RotateCcw, Search, Users } from 'lucide-react';
+import { Clock, LogOut, Plus, RotateCcw, Search, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import type React from 'react';
+
+// Present only when the recipe box is on the server.
+export type OwnerControls = {
+  isOwner: boolean;
+  // The sign-in form is not part of the public page. It appears at #signin.
+  showSignIn: boolean;
+  // Resolves to nothing on success, or to the sentence to show.
+  onSignIn: (password: string) => Promise<string | void>;
+  onSignOut: () => void;
+};
 
 type RecipeListProps = {
   recipes: Recipe[];
@@ -12,6 +23,7 @@ type RecipeListProps = {
   onRestoreRecipes: () => void;
   showRestoreRecipes: boolean;
   notice?: string;
+  owner?: OwnerControls;
 };
 
 export function RecipeList({
@@ -23,6 +35,7 @@ export function RecipeList({
   onRestoreRecipes,
   showRestoreRecipes,
   notice,
+  owner,
 }: RecipeListProps) {
   const [query, setQuery] = useState('');
   const filteredRecipes = useMemo(() => {
@@ -70,6 +83,17 @@ export function RecipeList({
           )}
         </div>
       </div>
+
+      {owner?.isOwner && (
+        <div className="mx-auto mt-4 flex max-w-6xl items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900 lg:max-w-none">
+          <span>Signed in. You can edit.</span>
+          <button type="button" onClick={owner.onSignOut} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 text-emerald-900 underline-offset-2 hover:underline">
+            <LogOut size={15} /> Sign out
+          </button>
+        </div>
+      )}
+
+      {owner && !owner.isOwner && owner.showSignIn && <SignInForm onSignIn={owner.onSignIn} />}
 
       {notice && (
         <p role="status" className="mx-auto mt-4 max-w-6xl rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-5 text-amber-900 lg:max-w-none">
@@ -132,5 +156,55 @@ export function RecipeList({
         </div>
       </div>
     </aside>
+  );
+}
+
+function SignInForm({ onSignIn }: { onSignIn: OwnerControls['onSignIn'] }) {
+  const [password, setPassword] = useState('');
+  const [problem, setProblem] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isBusy || !password) {
+      return;
+    }
+    setIsBusy(true);
+    setProblem('');
+    const result = await onSignIn(password);
+    // On success the parent unmounts this form.
+    if (result) {
+      setIsBusy(false);
+      setProblem(result);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} aria-label="Owner sign-in" className="mx-auto mt-4 max-w-6xl rounded-md border border-stone-200 bg-stone-50 p-3 lg:max-w-none">
+      {/* A username the password manager can file the password under. */}
+      <input type="text" name="username" autoComplete="username" value="Next Thyme owner" readOnly hidden />
+      <label htmlFor="owner-password" className="block text-xs font-black uppercase tracking-[0.12em] text-stone-600">
+        Owner password
+      </label>
+      <div className="mt-2 flex gap-2">
+        <input
+          id="owner-password"
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          className="h-10 min-w-0 flex-1 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-950 outline-none focus:border-red-500"
+        />
+        <button type="submit" disabled={isBusy || !password} className="h-10 shrink-0 rounded-md bg-stone-900 px-3 text-sm font-bold text-white transition hover:bg-stone-700 disabled:opacity-60">
+          {isBusy ? 'Signing in…' : 'Sign in'}
+        </button>
+      </div>
+      {problem && (
+        <p role="alert" className="mt-2 text-sm font-bold text-red-800">
+          {problem}
+        </p>
+      )}
+    </form>
   );
 }

@@ -44,6 +44,9 @@ return [
      */
     'owner_password_hash' => '',
 
+    // Sessions are kept in nextthyme-sessions/, beside this file. The
+    // endpoint creates the directory on the first sign-in; nothing to do here.
+
     /**
      * Salt for hashing login attempts' IP addresses. Generate once:
      *
