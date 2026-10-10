@@ -134,6 +134,19 @@ try {
   check('a visitor is not the owner', r.status === 200 && r.json?.owner === false, show(r));
   check('a visitor is given no session cookie', r.setCookie === '', r.setCookie);
 
+  const sessionFiles = () => Number(php(`echo count(glob(dirname(getenv("NT_CONFIG")) . "/nextthyme-sessions/sess_*"));`));
+  const filesBefore = sessionFiles();
+  cookie = 'nt_session=abcdefghijklmnopqrstuvwxyz012345';
+  r = await call('GET', 'session.php', { origin: null });
+  check('a made-up cookie is not the owner', r.json?.owner === false && r.setCookie === '', show(r));
+  r = await call('POST', 'recipes.php', { body: recipe() });
+  check('a made-up cookie cannot write: 401', r.status === 401, show(r));
+  check('and creates no session file', sessionFiles() === filesBefore, `${filesBefore} -> ${sessionFiles()}`);
+  cookie = 'nt_session=../../etc/passwd';
+  r = await call('GET', 'session.php', { origin: null });
+  check('a path in the cookie is ignored', r.status === 200 && r.json?.owner === false, show(r));
+  cookie = '';
+
   console.log('Writes are refused before sign-in');
   r = await call('POST', 'recipes.php', { body: recipe(), origin: null });
   check('no Origin header: 403', r.status === 403, show(r));

@@ -292,13 +292,18 @@ const NT_SESSION_IDLE = 14 * 24 * 3600;
  * The cookie is HttpOnly, SameSite=Strict, scoped to this app's path, and
  * Secure everywhere except plain-http localhost in development.
  */
+function nt_session_dir(): string
+{
+    return dirname(__DIR__, 3) . '/nextthyme-sessions';
+}
+
 function nt_session_start(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
 
-    $dir = dirname(__DIR__, 3) . '/nextthyme-sessions';
+    $dir = nt_session_dir();
     if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
         nt_fail("could not create the session directory $dir");
     }
@@ -331,7 +336,16 @@ function nt_session_start(): void
 function nt_is_owner(): bool
 {
     // No cookie, no session: a visitor's request never creates a session file.
-    if (empty($_COOKIE['nt_session'])) {
+    // Nor does a made-up cookie. Started on an id it does not know, PHP would
+    // mint a fresh session and write a file for it, so anyone sending random
+    // cookies could fill the directory one request at a time. Only an id that
+    // already has a file, which only a sign-in creates, is ever started.
+    $id = $_COOKIE['nt_session'] ?? '';
+    if (
+        !is_string($id)
+        || !preg_match('/^[A-Za-z0-9,-]{16,128}$/', $id)
+        || !is_file(nt_session_dir() . '/sess_' . $id)
+    ) {
         return false;
     }
     nt_session_start();
@@ -360,10 +374,10 @@ function nt_require_owner(): void
 
 function nt_sign_out(): void
 {
-    if (empty($_COOKIE['nt_session'])) {
+    // Same rule as nt_is_owner: nothing to end unless a real session exists.
+    if (!nt_is_owner()) {
         return;
     }
-    nt_session_start();
     $_SESSION = [];
     $params = session_get_cookie_params();
     setcookie('nt_session', '', [
