@@ -1,6 +1,7 @@
 # Moving Next Thyme to MySQL on Hostinger
 
-Status: phases 1 and 2 done on `claude/mysql-backend`; phase 3 next.
+Status: phases 1 to 3 built. Phases 1 and 2 are live; phase 3 is on
+`claude/owner-login`. Phase 4 (photo uploads) is next.
 
 ## Decisions
 
@@ -77,6 +78,9 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
 | GET | `api/image.php?id=`: serves the bytes, long cache, ETag = sha256 | none |
 | GET / POST / DELETE | `api/session.php`: whether you're logged in, log in, log out | – |
 
+Sign in at `https://lelandrangel.com/nextthyme/#signin`. A sign-in lasts 30
+days, or 14 without use.
+
 - **Cookie:** `HttpOnly; Secure; SameSite=Strict; Path=/nextthyme/`.
 - **Writes:** every write checks `Origin` against `allowed_origins` and
   requires `Content-Type: application/json`, except the image upload, which is
@@ -119,9 +123,33 @@ Schema: `db/migrations/001_recipes.sql`. Why it is shaped the way it is:
    - [x] Verified locally: the four existing smoke tests pass, a title changed in
      MariaDB shows on reload, stopping the API shows the fallback, and a
      missing config gives a bare 500 with the path in the log.
-3. **Login and writing.** `session.php`, create/update/delete, the `409`
-   handling in the form, and a delete button. The form's generated ids have
-   an unbounded slug, so clamp them to fit `VARCHAR(128)`.
+3. **Login and writing.**
+   - [x] `public/api/session.php`: sign in, sign out, and "who am I". Failures
+     are rate limited per salted IP hash and site-wide. The session cookie is
+     `HttpOnly; SameSite=Strict`, scoped to the app's path, and `Secure` off
+     localhost. Sessions are files in `nextthyme-sessions/` beside the config.
+   - [x] `recipes.php`: `POST`, `PUT ?id=` (409 on a stale `version`, with the
+     current copy) and `DELETE ?id=` (soft). Each needs an allowed `Origin`, the
+     owner's session and a JSON body, and `nt_validate_recipe()` checks every
+     field against the column widths.
+   - [x] The app: the sign-in form is at `#signin`, not on the public page.
+     Signed in, Add / Edit / Delete appear. A refused save keeps the form and
+     its edits and says why.
+   - [x] Generated ids are clamped to fit `VARCHAR(128)`.
+   - [x] An edit that does not touch the ingredient or direction text keeps
+     those lists exactly. The form's textareas cannot represent sections,
+     notes or "to taste", so re-reading them would have flattened a seeded
+     recipe for every visitor on the first edit of its title.
+   - [x] Tests: `npm run test:api` (51 checks against real PHP and MariaDB), 10
+     Playwright tests of the owner flows, and one real-browser run through
+     sign-in, edit, create, delete and sign-out against the real endpoints.
+
+   Known limit, left for later: **editing a recipe's ingredient text in the
+   form still flattens it** into one "Ingredients" section and drops notes.
+   That is the form's old behaviour, now only reached when the text is
+   actually changed. A structured ingredient editor is its own piece of work.
+   No photo upload in api mode yet either: paste an https link, or leave the
+   placeholder.
 4. **Images.** `image.php`. The form uploads the file instead of building a
    data URL, and a saved recipe claims its upload rows.
 5. **Bringing over the owner's recipes.** When logged in and the browser still

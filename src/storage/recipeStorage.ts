@@ -9,12 +9,15 @@ import { COOKING_METHODS, type Recipe } from '../types/recipe';
 //   unset  the browser's own localStorage, exactly as before. A fresh clone,
 //          `npm run dev` and the smoke tests need no database.
 //   set    the recipe box on the server (e.g. /nextthyme/api/recipes.php).
-//          Visitors read it; nothing in this mode writes yet.
+//          Visitors read it. The owner signs in and writes through it.
 
 const RECIPES_STORAGE_KEY = 'next-thyme-recipes';
 const recipesApi = (import.meta.env.VITE_RECIPES_API ?? '').trim();
 
 export const recipeSource: 'local' | 'api' = recipesApi ? 'api' : 'local';
+
+// session.php sits beside recipes.php, so one variable configures both.
+const sessionApi = recipesApi.replace(/[^/]*$/, 'session.php');
 
 export type RecipeLoadResult = {
   recipes: Recipe[];
@@ -22,7 +25,7 @@ export type RecipeLoadResult = {
   storageRecovered: boolean;
   // The server could not be reached, so the bundled samples are showing.
   apiUnavailable: boolean;
-  // Edit controls are hidden. True for every visitor in api mode.
+  // Edit controls are hidden. True in api mode until the owner signs in.
   readOnly: boolean;
 };
 
@@ -197,11 +200,7 @@ async function fetchApiRecipes(): Promise<Recipe[]> {
     throw new Error('Recipe API returned something that is not a recipe list.');
   }
 
-  return list.map((recipe) => ({
-    ...recipe,
-    imageUrl: resolveImage(recipe.imageUrl),
-    imageSmallUrl: resolveImage(recipe.imageSmallUrl ?? recipe.imageUrl),
-  }));
+  return list.map(fromApiRecipe);
 }
 
 /**
@@ -220,5 +219,175 @@ export async function loadRecipes(): Promise<RecipeLoadResult> {
   } catch (error) {
     console.error(error);
     return { recipes: seedRecipes, storageRecovered: false, apiUnavailable: true, readOnly: true };
+  }
+}
+
+// ── The owner's writes (api mode only) ────────────────────────────────────
+
+/** Why a write did not happen, in words the form can show as they are. */
+export class RecipeWriteError extends Error {
+  constructor(
+    message: string,
+    readonly kind: 'conflict' | 'signed-out' | 'invalid' | 'exists' | 'failed',
+    // For a conflict: the copy the server has now.
+    readonly current?: Recipe,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * The reverse of resolveImage: what the server stores. The placeholder is
+ * "no image", and this app's own paths go back to being relative.
+ */
+function storedImage(url: string): string | null {
+  if (!url || url === placeholderImage) {
+    return null;
+  }
+  const base = import.meta.env.BASE_URL;
+  if (base && url.startsWith(base) && !/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+    return url.slice(base.length);
+  }
+  return url;
+}
+
+// The server takes whole numbers for these and refuses anything else. A
+// number input can hand back 4.5 or NaN, so they are settled here.
+const whole = (value: number, minimum = 0) => Math.max(minimum, Math.round(Number.isFinite(value) ? value : minimum));
+
+function toApiRecipe(recipe: Recipe) {
+  return {
+    ...recipe,
+    imageUrl: storedImage(recipe.imageUrl),
+    imageSmallUrl: storedImage(recipe.imageSmallUrl),
+    servings: whole(recipe.servings, 1),
+    prepTimeMinutes: whole(recipe.prepTimeMinutes),
+    cookTimeMinutes: whole(recipe.cookTimeMinutes),
+    totalTimeMinutes: whole(recipe.totalTimeMinutes),
+    ...(recipe.ovenTempF === undefined ? {} : { ovenTempF: whole(recipe.ovenTempF) }),
+  };
+}
+
+function fromApiRecipe(recipe: ApiRecipe): Recipe {
+  return {
+    ...recipe,
+    imageUrl: resolveImage(recipe.imageUrl),
+    imageSmallUrl: resolveImage(recipe.imageSmallUrl ?? recipe.imageUrl),
+  };
+}
+
+async function send(url: string, method: string, body?: unknown) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), RECIPES_API_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      credentials: 'same-origin',
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data: unknown = await response.json().catch(() => null);
+    return { status: response.status, data: (data ?? {}) as Record<string, unknown> };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+/** Whether this browser is signed in as the owner. Never throws. */
+export async function isSignedIn(): Promise<boolean> {
+  if (recipeSource !== 'api') {
+    return false;
+  }
+  try {
+    const { status, data } = await send(sessionApi, 'GET');
+    return status === 200 && data.owner === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Resolves to nothing on success, or to the sentence to show. */
+export async function signIn(password: string): Promise<string | void> {
+  try {
+    const { status, data } = await send(sessionApi, 'POST', { password });
+    if (status === 200 && data.owner === true) {
+      return;
+    }
+    if (status === 429) {
+      return 'Too many attempts. Wait a quarter of an hour and try again.';
+    }
+    if (status === 401 || status === 400) {
+      return 'That password is not right.';
+    }
+    return 'Sign-in is not working right now.';
+  } catch {
+    return 'The server could not be reached.';
+  }
+}
+
+export async function signOut(): Promise<void> {
+  try {
+    await send(sessionApi, 'DELETE');
+  } catch {
+    // Signed out locally either way; the cookie expires on its own.
+  }
+}
+
+function writeFailure(status: number, data: Record<string, unknown>): RecipeWriteError {
+  if (status === 409 && data.error === 'conflict') {
+    const current = isApiRecipe(data.recipe) ? fromApiRecipe(data.recipe) : undefined;
+    return new RecipeWriteError(
+      'This recipe was changed somewhere else after you opened it, so nothing was saved. Your edits are still in this form: copy anything you want to keep, then cancel and open the recipe again.',
+      'conflict',
+      current,
+    );
+  }
+  if (status === 409) {
+    return new RecipeWriteError('A recipe with this name already exists, or was deleted. Change the title and save again.', 'exists');
+  }
+  if (status === 401) {
+    return new RecipeWriteError(
+      'You are signed out, so nothing was saved. Open this site in another tab, sign in there, then save again here.',
+      'signed-out',
+    );
+  }
+  if (status === 422 && Array.isArray(data.fields)) {
+    return new RecipeWriteError(`The server did not accept: ${data.fields.join(', ')}.`, 'invalid');
+  }
+  return new RecipeWriteError('The server could not save this right now. Nothing was changed; try again in a moment.', 'failed');
+}
+
+/**
+ * Creates the recipe, or replaces it if the server already has it (it
+ * carries a version). Resolves to the saved copy, with its new version.
+ */
+export async function saveRecipeToServer(recipe: Recipe): Promise<Recipe> {
+  const isNew = recipe.version === undefined;
+  let result;
+  try {
+    result = isNew
+      ? await send(recipesApi, 'POST', toApiRecipe(recipe))
+      : await send(`${recipesApi}?id=${encodeURIComponent(recipe.id)}`, 'PUT', toApiRecipe(recipe));
+  } catch {
+    throw new RecipeWriteError('The server could not be reached. Nothing was saved; try again in a moment.', 'failed');
+  }
+
+  if ((result.status === 200 || result.status === 201) && isApiRecipe(result.data.recipe)) {
+    return fromApiRecipe(result.data.recipe);
+  }
+  throw writeFailure(result.status, result.data);
+}
+
+export async function deleteRecipeOnServer(recipeId: string): Promise<void> {
+  let result;
+  try {
+    result = await send(`${recipesApi}?id=${encodeURIComponent(recipeId)}`, 'DELETE');
+  } catch {
+    throw new RecipeWriteError('The server could not be reached. Nothing was deleted.', 'failed');
+  }
+  // Already gone is the outcome that was asked for.
+  if (result.status !== 200 && result.status !== 404) {
+    throw writeFailure(result.status, result.data);
   }
 }
