@@ -10,6 +10,12 @@ test('seeds and renders recipes on a fresh browser profile', async ({ page }) =>
   await expect(page.getByRole('button', { name: /Easy Lasagna Rolls/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Restore samples/i })).toBeHidden();
 
+  // The four Southern recipes are samples too, so a fresh browser has them.
+  await expect(page.getByRole('button', { name: /Chicken & Rice Casserole/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Creamy Smoked Sausage Tortellini/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Slow Cooker Pot Roast/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Meatloaf with Mashed Potatoes & Green Beans/i })).toBeVisible();
+
   await page.getByRole('button', { name: /Beef Brisket Taquitos/i }).click();
 
   await expect(page.getByRole('heading', { name: 'Beef Brisket Taquitos' })).toBeVisible();

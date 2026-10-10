@@ -32,8 +32,19 @@ const { module } = await runnerImport(path.join(root, 'src/data/seedRecipes.ts')
 });
 const recipes = module.seedRecipes;
 
+const { module: placeholderModule } = await runnerImport(path.join(root, 'src/data/placeholderImage.ts'), {
+  root,
+  base: '/',
+  configFile: false,
+  logLevel: 'silent',
+});
+const { placeholderImage } = placeholderModule;
+
 function relativeAsset(url) {
-  if (!url) return null;
+  // A recipe with no photo carries the placeholder in TypeScript. The database
+  // says that with NULL, and the app draws the placeholder itself, so the
+  // 1 KB data: URL is not copied into every such row (image_url is 512 wide).
+  if (!url || url === placeholderImage) return null;
   if (/^(?:[a-z]+:|\/\/)/i.test(url)) return url; // absolute: leave alone
   return url.replace(/^\/+/, '');
 }
