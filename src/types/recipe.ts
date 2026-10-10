@@ -13,7 +13,15 @@ export type DirectionStep = {
   instruction: string;
 };
 
-export type CookingMethod = 'Oven' | 'Stovetop' | 'Microwave';
+// One list, so the form's options, the API check and the type cannot drift.
+// The database column is an ENUM of the same values: add one here and it
+// needs a migration too (see db/migrations/003_slow_cooker_method.sql).
+export const COOKING_METHODS = ['Oven', 'Stovetop', 'Microwave', 'Slow cooker'] as const;
+
+export type CookingMethod = (typeof COOKING_METHODS)[number];
+
+// Methods with no oven temperature to show or ask for.
+export const METHODS_WITHOUT_TEMPERATURE: readonly CookingMethod[] = ['Microwave', 'Slow cooker'];
 
 export type Recipe = {
   id: string;
