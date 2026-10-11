@@ -136,9 +136,12 @@ test('editing a title sends a PUT that leaves everything else as it was', async 
   expect(sent.ingredients).toEqual(original.ingredients);
   expect(sent.directions).toEqual(original.directions);
   expect(sent.tags).toEqual(original.tags);
-  // No photo is NULL on the server, never the placeholder's data: URL.
-  expect(sent.imageUrl).toBeNull();
-  expect(sent.imageSmallUrl).toBeNull();
+  // The image goes back exactly as the server gave it: a path relative to
+  // the app, or null for none. Never the resolved URL the page displays, and
+  // never the placeholder's data: URL.
+  expect(sent.imageUrl).toBe(original.imageUrl);
+  expect(sent.imageSmallUrl).toBe(original.imageSmallUrl);
+  expect(sent.imageAlt).toBe(original.imageAlt);
 });
 
 test('an edit keeps a recipe’s own image paths relative, small one included', async ({ page }) => {
