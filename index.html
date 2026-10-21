@@ -9,13 +9,21 @@
     />
     <meta name="theme-color" content="#f8f4ed" />
 
-    <!-- %BASE_URL% because this deploys into /nextthyme/ on a document root
-         shared with three other projects. Declaring nothing is what used to
-         happen, and a browser then falls back to the ORIGIN root's
-         /favicon.ico -- which is the portfolio's icon, not this site's.
-         Relative hrefs would not do either: the router serves real paths
-         like /nextthyme/recipe/pot-roast, where "favicon.ico" resolves to
-         /nextthyme/recipe/favicon.ico. -->
+    <!-- Declared explicitly because this deploys into /nextthyme/ on a
+         document root shared with three other projects. With nothing declared
+         a browser falls back to the ORIGIN root's /favicon.ico, which is the
+         portfolio's icon rather than this site's -- and that is what the tab
+         actually showed before these three lines existed.
+
+         %BASE_URL% rather than a hardcoded /nextthyme/: the deploy builds with
+         VITE_BASE_PATH=./, so these resolve beside index.html wherever the app
+         is mounted, and they follow if that base ever changes.
+
+         An earlier version of this comment justified %BASE_URL% by claiming a
+         router served paths like /nextthyme/recipe/pot-roast, where a relative
+         href would resolve wrongly. That was false: this app has no routing
+         dependency at all and /nextthyme/ is the only URL it serves, so a
+         relative href has nothing to get wrong here. -->
     <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="%BASE_URL%favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
