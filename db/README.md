@@ -31,12 +31,20 @@ There is no migration runner. Apply through phpMyAdmin:
 1. `db/migrations/001_recipes.sql`: the tables
 2. `db/migrations/003_slow_cooker_method.sql`: adds the 'Slow cooker' method
 3. `db/seed/002_seed_recipes.sql`: the ten sample recipes
+4. `db/migrations/004_southern_recipe_photos.sql`: only for a database that
+   was seeded before the four Southern recipes had photos. On any other it
+   changes nothing, so it is always safe to run
 
 **The seed goes last, whatever its number.** It is numbered 002 because it
 came second; 003 was added later and the seed now includes a slow cooker
 recipe, whose row is refused until 003 has widened the column. Import the
 seed first by mistake and it stops at that row with an error. Nothing is
 damaged: apply 003 and import the seed again.
+
+**Changing a sample recipe that is already in the database** is not
+something the seed can do, on purpose: it never touches an existing row, so
+it can never undo an edit. A change like that is a migration with an
+explicit `UPDATE`, as 004 is.
 
 **Adding sample recipes later** is the same last step: add them to
 `src/data/seedRecipes.ts`, run `npm run db:seed-sql`, and re-import the seed.

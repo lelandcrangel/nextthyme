@@ -70,7 +70,35 @@ test('shows a slow cooker recipe as a slow cooker recipe', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Slow Cooker Pot Roast' })).toBeVisible();
   await expect(page.getByText('MethodSlow cooker')).toBeVisible();
   await expect(page.getByText('Cook on low for 8–9 hours, or on high for 5–6 hours.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Slow Cooker Pot Roast/i }).getByRole('img')).toHaveAttribute('src', /^data:image\/svg\+xml,/);
+  await expect(page.getByRole('button', { name: /Slow Cooker Pot Roast/i }).getByRole('img')).toHaveAttribute(
+    'src',
+    '/images/recipes/slow-cooker-pot-roast-640.webp',
+  );
+  // Credited to its photographer, with the licence, linking to the source.
+  const credit = page.getByRole('link', { name: 'Photo by Melissa Doroquez, CC BY-SA 2.0 (cropped)' });
+  await expect(credit).toHaveAttribute('href', 'https://www.flickr.com/photos/62967061@N00/2775536839/');
+});
+
+test('every recipe’s list photo is a file that exists', async ({ page }) => {
+  await answerRecipes(page, { body: copyOfFixture() });
+  await page.goto('/');
+
+  const photos = page.getByLabel('Saved recipes').getByRole('img');
+  await expect(photos).toHaveCount(fixture.recipes.length);
+  let checked = 0;
+  for (const photo of await photos.all()) {
+    // Only this site's own files. One sample still links a photo on another
+    // site's server, and a test should not fail because that site is slow.
+    if (!(await photo.getAttribute('src'))?.startsWith('/images/')) {
+      continue;
+    }
+    checked += 1;
+    await photo.scrollIntoViewIfNeeded();
+    // A path with no file behind it still gets a response from the dev
+    // server, so the status is not the test: the browser decoding it is.
+    await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { message: await photo.getAttribute('src') ?? '' }).toBe(true);
+  }
+  expect(checked).toBe(9);
 });
 
 test('falls back to the samples, read-only, when the API fails', async ({ page }) => {

@@ -101,3 +101,11 @@ This project is designed to work on a fresh clone without preexisting browser st
 Dependency versions are pinned in `package.json` to avoid future `latest` version drift breaking a first-run demo.
 
 Recipe images are served from `public/images/recipes` instead of remote hosts so a fresh portfolio demo is faster, more reliable, and less likely to shift layout while loading.
+
+To add a photo for a recipe, make its two sizes from any source image:
+
+```bash
+node scripts/add-recipe-photo.mjs <recipe-id> path/to/photo.jpg
+```
+
+That writes `<recipe-id>-1200.webp` and `<recipe-id>-640.webp`. The source file is not kept in the repository. Only use photos you took or that are licensed for reuse, and put the photographer and licence in the recipe's `imageCredit`, with a link to the source in `imageCreditUrl`.

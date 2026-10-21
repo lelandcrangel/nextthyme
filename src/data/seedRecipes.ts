@@ -1,18 +1,15 @@
-import { placeholderImage } from './placeholderImage';
 import type { Recipe } from '../types/recipe';
 
 const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`;
 
-// For a recipe with no photo and details nobody has supplied yet, the same
-// values the "Add recipe" form saves. Nothing here is invented: nutrition is
-// "Not added" until someone measures it.
-const noPhoto = (title: string) => ({
-  imageUrl: placeholderImage,
-  imageSmallUrl: placeholderImage,
-  imageAlt: `${title} recipe`,
-  imageCredit: 'Next Thyme placeholder',
-  imageCreditUrl: '#',
-});
+// For details nobody has supplied yet, the same values the "Add recipe" form
+// saves. Nothing here is invented: nutrition is "Not added" until someone
+// measures it.
+//
+// The four Southern recipes' photos are the closest freely licensed matches
+// that could be found, not photos of these exact dishes: the tortellini shows
+// no sausage, the pot roast is in an oven roaster, the casserole shows no
+// broccoli or rice. Each alt text describes the photo that is actually there.
 const nutritionNotAdded = { calories: 0, protein: 'Not added', fat: 'Not added', carbohydrates: 'Not added' };
 const NEXT_TIME_DEFAULT = 'Add a note after you make it once.';
 const STORAGE_DEFAULT = 'Store leftovers in an airtight container in the refrigerator.';
@@ -350,7 +347,11 @@ export const seedRecipes: Recipe[] = [
     category: 'Dinner',
     cuisine: 'Southern comfort food',
     difficulty: 'Easy',
-    ...noPhoto('Chicken & Rice Casserole'),
+    imageUrl: assetUrl('images/recipes/chicken-rice-casserole-1200.webp'),
+    imageSmallUrl: assetUrl('images/recipes/chicken-rice-casserole-640.webp'),
+    imageAlt: 'Cheesy baked chicken casserole with a golden, bubbly top in a glass baking dish',
+    imageCredit: 'Photo by David Kessler, CC BY-SA 2.0 (cropped)',
+    imageCreditUrl: 'https://www.flickr.com/photos/31474531@N00/5439411637/',
     history: '',
     servings: 6,
     yieldLabel: 'One 9x13 casserole',
@@ -399,7 +400,11 @@ export const seedRecipes: Recipe[] = [
     category: 'Dinner',
     cuisine: 'Southern comfort food',
     difficulty: 'Easy',
-    ...noPhoto('Creamy Smoked Sausage Tortellini'),
+    imageUrl: assetUrl('images/recipes/creamy-smoked-sausage-tortellini-1200.webp'),
+    imageSmallUrl: assetUrl('images/recipes/creamy-smoked-sausage-tortellini-640.webp'),
+    imageAlt: 'Tortellini in cream sauce in a dark bowl',
+    imageCredit: 'Photo by Pietro Luca Cassarino, CC BY-SA 4.0 (cropped)',
+    imageCreditUrl: 'https://commons.wikimedia.org/wiki/File:Tortellini_con_la_panna.jpg',
     history: '',
     servings: 5,
     yieldLabel: '5 servings',
@@ -447,7 +452,11 @@ export const seedRecipes: Recipe[] = [
     category: 'Dinner',
     cuisine: 'Southern comfort food',
     difficulty: 'Easy',
-    ...noPhoto('Slow Cooker Pot Roast'),
+    imageUrl: assetUrl('images/recipes/slow-cooker-pot-roast-1200.webp'),
+    imageSmallUrl: assetUrl('images/recipes/slow-cooker-pot-roast-640.webp'),
+    imageAlt: 'Shredded pot roast with carrots and potatoes in a dark roasting pot, with two serving utensils',
+    imageCredit: 'Photo by Melissa Doroquez, CC BY-SA 2.0 (cropped)',
+    imageCreditUrl: 'https://www.flickr.com/photos/62967061@N00/2775536839/',
     history: '',
     servings: 6,
     yieldLabel: 'One 3 lb roast',
@@ -493,7 +502,11 @@ export const seedRecipes: Recipe[] = [
     category: 'Dinner',
     cuisine: 'Southern comfort food',
     difficulty: 'Easy',
-    ...noPhoto('Meatloaf with Mashed Potatoes & Green Beans'),
+    imageUrl: assetUrl('images/recipes/meatloaf-mashed-potatoes-green-beans-1200.webp'),
+    imageSmallUrl: assetUrl('images/recipes/meatloaf-mashed-potatoes-green-beans-640.webp'),
+    imageAlt: 'Plate of tomato-glazed meatloaf slices, mashed potatoes topped with tomato sauce, and green beans',
+    imageCredit: 'Photo by F Delventhal, CC BY 2.0 (cropped)',
+    imageCreditUrl: 'https://www.flickr.com/photos/13194817@N00/52547979633/',
     history: '',
     servings: 6,
     yieldLabel: 'One 9x5 loaf',
