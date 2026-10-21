@@ -16,6 +16,7 @@
     "preview:audit": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test:setup": "playwright install chromium",
     "test:smoke": "playwright test",
+    "test:api": "node scripts/test-endpoints.mjs",
     "audit:lighthouse:run": "lighthouse http://127.0.0.1:4173 --only-categories=performance,accessibility,best-practices,seo --output=html --output-path=./lighthouse-report.html --chrome-flags='--headless'",
     "audit:lighthouse": "npm run build && start-server-and-test 'npm run preview:audit' http://127.0.0.1:4173 'npm run audit:lighthouse:run'"
   },

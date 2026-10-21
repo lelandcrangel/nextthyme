@@ -10,7 +10,11 @@ const fixture = JSON.parse(readFileSync(new URL('./fixtures/api-recipes.json', i
 
 const FALLBACK_NOTICE = /could not be reached/i;
 
-function answerRecipes(page: Page, respond: { status?: number; body?: unknown }) {
+async function answerRecipes(page: Page, respond: { status?: number; body?: unknown }) {
+  // Every page load also asks who it is. These are all visitors.
+  await page.route('**/api/session.php', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ owner: false }) }),
+  );
   return page.route('**/api/recipes.php', (route) =>
     route.fulfill({
       status: respond.status ?? 200,
@@ -86,6 +90,9 @@ test('falls back to the samples, read-only, when the API fails', async ({ page }
 test('falls back when the API never answers', async ({ page }) => {
   // RECIPES_API_TIMEOUT_MS in recipeStorage.ts is 8 s; this waits past it.
   test.setTimeout(30_000);
+  await page.route('**/api/session.php', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ owner: false }) }),
+  );
   await page.route('**/api/recipes.php', () => {
     // Deliberately never fulfilled: a stalled PHP worker or MySQL connection.
   });

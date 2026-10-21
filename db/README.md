@@ -74,6 +74,39 @@ recipes' photos are not here; they are static files deployed with the build.
 **`login_attempts`**: salted IP hash, success flag, timestamp. For rate
 limiting the owner login and nothing else. Safe to truncate at any time.
 
+## The owner's sign-in
+
+There is one writer and no accounts. The password's hash is
+`owner_password_hash` in the server config; while it is empty nobody can sign
+in and the site is read-only for everyone.
+
+To set or change the password, make a hash on your own machine. The password
+is typed at a prompt, not on the command line, so it stays out of shell history:
+
+```bash
+php -r 'echo password_hash(readline("New owner password: "), PASSWORD_DEFAULT), PHP_EOL;'
+```
+
+Paste the output (it starts `$2y$`) into `owner_password_hash` in
+`~/domains/lelandrangel.com/nextthyme-config.php`, in single quotes. Changing
+the hash does not sign out a browser that is already signed in; to do that,
+delete the files in `~/domains/lelandrangel.com/nextthyme-sessions/`.
+
+Then sign in at `https://lelandrangel.com/nextthyme/#signin`. The form is not
+on the public page.
+
+The config must also have `ip_salt` (16+ characters) and list
+`https://lelandrangel.com` in `allowed_origins`, or every write and every
+sign-in is refused. `nextthyme-sessions/` is created by the endpoint on the
+first sign-in, beside the config and above the web root.
+
+Five wrong passwords from one address lock that address out for fifteen
+minutes. If that is you, wait, or clear it:
+
+```sql
+DELETE FROM login_attempts;
+```
+
 ## Handy statements
 
 Undo a delete:

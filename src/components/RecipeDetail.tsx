@@ -12,6 +12,7 @@ import {
   Scale,
   Soup,
   Timer,
+  Trash2,
   Utensils,
 } from 'lucide-react';
 import { METHODS_WITHOUT_TEMPERATURE, type Ingredient, type Recipe } from '../types/recipe';
@@ -21,9 +22,11 @@ type RecipeDetailProps = {
   recipe: Recipe;
   // Absent for a read-only visitor, and so is the button.
   onEditRecipe?: (recipeId: string) => void;
+  // Absent unless the recipe box is on the server and the owner is signed in.
+  onDeleteRecipe?: (recipeId: string) => void;
 };
 
-export function RecipeDetail({ recipe, onEditRecipe }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, onEditRecipe, onDeleteRecipe }: RecipeDetailProps) {
   const [desiredServings, setDesiredServings] = useState(recipe.servings);
   const [checkedIngredientIds, setCheckedIngredientIds] = useState<string[]>([]);
   const [activeStepId, setActiveStepId] = useState(recipe.directions[0]?.id ?? '');
@@ -111,6 +114,11 @@ export function RecipeDetail({ recipe, onEditRecipe }: RecipeDetailProps) {
               <button onClick={printRecipe} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/50 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20 sm:w-auto">
                 <Printer size={17} /> Print recipe
               </button>
+              {onDeleteRecipe && (
+                <button onClick={() => onDeleteRecipe(recipe.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-300/70 bg-red-950/40 px-4 py-3 text-sm font-bold text-red-100 backdrop-blur transition hover:bg-red-900/60 sm:w-auto">
+                  <Trash2 size={17} /> Delete recipe
+                </button>
+              )}
             </div>
           </div>
         </div>

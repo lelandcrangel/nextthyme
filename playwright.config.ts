@@ -9,8 +9,8 @@ const reuseExistingServer = !process.env.CI;
 export default defineConfig({
   testDir: './tests',
   projects: [
-    { name: 'local', testIgnore: /api-mode\.spec\.ts/, use: { baseURL: 'http://127.0.0.1:5173' } },
-    { name: 'api', testMatch: /api-mode\.spec\.ts/, use: { baseURL: 'http://127.0.0.1:5175' } },
+    { name: 'local', testIgnore: /api-.*\.spec\.ts/, use: { baseURL: 'http://127.0.0.1:5173' } },
+    { name: 'api', testMatch: /api-.*\.spec\.ts/, use: { baseURL: 'http://127.0.0.1:5175' } },
   ],
   webServer: [
     {
